@@ -1,0 +1,12 @@
+# user-downloaded models (see models/*/README.md)
+models/**/*.onnx
+models/**/*.bin
+models/parakeet/tokens.txt
+# bring-your-own music bed (see music/README.md)
+music/*
+!music/README.md
+# machine-specific settings
+scripts/config.local.json
+__pycache__/
+# editor / script backups
+*.bak

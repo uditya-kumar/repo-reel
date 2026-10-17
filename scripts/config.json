@@ -1,0 +1,49 @@
+{
+  "hyperframes": "hyperframes@0.8.156",
+  "python": "python",
+  "videosDir": "~/repo-reels",
+  "modelsDir": "models",
+  "musicDir": "music",
+  "voice": {
+    "voice": "af_heart",
+    "speed": 1.14,
+    "lang": "en-us",
+    "gap": 0.3,
+    "trimThreshold": 0.01,
+    "trimPre": 0.03,
+    "trimPost": 0.08,
+    "loudnorm": "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000",
+    "minSeconds": 44,
+    "maxSeconds": 87.5
+  },
+  "asr": {
+    "parakeetCache": "~/.cache/hyperframes/parakeet/parakeet-tdt-0.6b-v3-int8"
+  },
+  "music": {
+    "file": "",
+    "refLufs": -7.0,
+    "refVolume": 0.134896,
+    "fadeIn": 0.3,
+    "mediaStartA": 0.3,
+    "mediaStartB": 0.27,
+    "splitMargin": 0.43,
+    "bpm": 0,
+    "beatPhase": 0
+  },
+  "timing": {
+    "sceneLead": 0.1,
+    "round": 0.05,
+    "tail": 2.04,
+    "maxReelSeconds": 90
+  },
+  "captions": {
+    "maxWords": 4,
+    "maxChars": 24,
+    "pause": 0.35,
+    "hold": 0.6
+  },
+  "render": {
+    "fps": 30,
+    "quality": "standard"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "kokoro": {
+    "name": "Kokoro v1.0 (ONNX) - narration voice",
+    "dir": "models/kokoro",
+    "page": "https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0",
+    "files": [
+      {
+        "name": "kokoro-v1.0.onnx",
+        "bytes": 325532387,
+        "sha256": "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
+        "url": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
+      },
+      {
+        "name": "voices-v1.0.bin",
+        "bytes": 28214398,
+        "sha256": "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
+        "url": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
+      }
+    ]
+  },
+  "parakeet": {
+    "name": "NVIDIA Parakeet TDT 0.6B v3 int8 (sherpa-onnx) - word timings",
+    "dir": "models/parakeet",
+    "page": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/tree/2bda32ec70b097a55adaa07d9a7173915b43cc78",
+    "note": "Same revision, sizes and sha256 that hyperframes@0.8.156 pins. tokens.txt is checked after CRLF -> LF (browsers on Windows often save it with CRLF).",
+    "files": [
+      {
+        "name": "encoder.int8.onnx",
+        "bytes": 652184281,
+        "sha256": "acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/encoder.int8.onnx"
+      },
+      {
+        "name": "decoder.int8.onnx",
+        "bytes": 11845275,
+        "sha256": "179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/decoder.int8.onnx"
+      },
+      {
+        "name": "joiner.int8.onnx",
+        "bytes": 6355277,
+        "sha256": "3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/joiner.int8.onnx"
+      },
+      {
+        "name": "tokens.txt",
+        "bytes": 93939,
+        "sha256": "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d",
+        "text": true,
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/tokens.txt"
+      }
+    ]
+  }
+}

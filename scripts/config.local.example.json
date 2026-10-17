@@ -1,0 +1,10 @@
+{
+  "python": "C:/Path/To/python.exe",
+  "videosDir": "~/repo-reels",
+  "modelsDir": "D:/models/repo-reel",
+  "music": {
+    "file": "D:/music/my-bed.mp3",
+    "bpm": 120,
+    "beatPhase": 0.25
+  }
+}
