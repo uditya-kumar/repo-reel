@@ -23,7 +23,7 @@ or set music.file in scripts/config.local.json. Then run setup.mjs.`);
 
 fs.cpSync(path.join(SKILL, "kit"), dir, { recursive: true, filter: (src) => !src.includes(`${path.sep}examples`) });
 fs.copyFileSync(music, path.join(dir, path.basename(music)));
-for (const d of ["assets/audio", "assets/shots", "compositions/scenes", "research", "script", "snaps", "renders"])
+for (const d of ["assets/audio", "assets/shots", "compositions/scenes", "research", "script", "storyboard", "snaps", "renders"])
   fs.mkdirSync(path.join(dir, d), { recursive: true });
 
 const pin = CFG.hyperframes;

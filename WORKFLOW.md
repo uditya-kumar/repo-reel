@@ -1,6 +1,6 @@
 # WORKFLOW.md: /repo-reel end to end
 
-Run the steps in order and tick each one. Steps marked **[script]** are done by a deterministic file in `scripts/` (section 9). Run the script; don't redo its work by hand. Every script prints what it did and exits non-zero with a clear message when something is wrong.
+Run the steps in order and tick each one. Steps marked **[script]** are done by a deterministic file in `scripts/` (section 10). Run the script; don't redo its work by hand. Every script prints what it did and exits non-zero with a clear message when something is wrong.
 The output must match `references/golden/` (the v3 frames) in look, pace and sound.
 
 In the commands below, `S=~/.claude/skills/repo-reel/scripts` and `P=<videosDir>/<slug>` (the path `scaffold.mjs` prints).
@@ -37,6 +37,18 @@ node $S/scaffold.mjs <github-url> [--slug name]   # → videos/<slug>/ (refuses 
 node $S/intake.mjs $P                             # → research/repo.json, README.md, images.json, facts.md skeleton
 ```
 - `scaffold` copies the kit and the music, and writes `meta.json`, `package.json` (pinned) and `script/reel.json` (`owner, repo, slug, title, repoUrl, url, cta`).
+- Project layout (`scaffold` creates every folder):
+  ```
+  <slug>/
+    research/      repo.json, README.md, images.json, facts.md (step 1)
+    script/        reel.json, lines.json (steps 1–2)
+    assets/        audio/ (step 3), shots/ + shots/site/ (step 4), logos/ (step 4), fonts, js
+    storyboard/    storyboard-lib.cjs (kit) + make-storyboard.cjs → storyboard.htm → storyboard.png (step 5)
+    scripts/       lib/reel-lib.cjs, build-scenes.cjs, scenes/*.cjs (step 6)
+    compositions/  scenes/*.html, captions.html, bg.html (generated: never edit)
+    snaps/         review/ and dense/ snapshots and contact sheets (step 7)
+    renders/       <slug>.mp4 (step 9)
+  ```
 - `intake` uses `gh api` (no browser). `images.json` = `{screenshots, stackLogos}`, with badges removed and relative paths resolved to raw URLs.
 
 Then the judgement part:
@@ -73,9 +85,13 @@ What each step does (each one can also be run alone as `node $S/<step>.mjs $P` o
 
 (v3 lags the voice by about 0.3 s by accident; new reels lead by 0.1 s. Expect scene starts a few tenths earlier than v3 for the same lines.)
 
-## 4. Screenshots (Chrome DevTools MCP) **[script: `crop.mjs` for post-processing]**
+## 4. Visual assets: repo, product website, logos (Chrome DevTools MCP) **[script: `crop.mjs` for post-processing]**
 
-Capture what the script's visual ideas need. That's always **`repo-header.png`** (the CTA needs it; `check` fails without it). **Product images and screenshots can be used in any beat wherever they help**: real UI, diagrams or images from the README or docs, demo frames, starter kits or example outputs. Use as many as the reel needs, as long as each one shows something real and the frame stays readable. Files the user drops in `$P/assets/shots/` count too; use them as they are.
+Run this right after the narration (step 3): the approved lines and their timings tell you which beats need which picture. Capture what the script's visual ideas need. That's always **`repo-header.png`** (the CTA needs it; `check` fails without it). **Product images and screenshots can be used in any beat wherever they help**: real UI, diagrams or images from the README or docs, demo frames, starter kits or example outputs. Use as many as the reel needs, as long as each one shows something real and the frame stays readable. Files the user drops in `$P/assets/shots/` count too; use them as they are.
+
+Where things go: `assets/shots/` (repo header, README images as `_src-<name>.png`), `assets/shots/site/` (product website shots), `assets/logos/` (SVG logos), `renders/<slug>-readme-9x16.png`. Raw captures are `_raw-*.png` and are deleted by `crop.mjs --clean`; `_src-*` files are kept.
+
+### 4.1 Repo page and README
 
 1. `new_page <url>` → `emulate` viewport `1280x1400x2` (DPR 2, so shots are 2560 px wide), `colorScheme: "dark"`. Dark matches the reel; use light only if the app's own UI is light-only.
 2. Clean the page with `evaluate_script`: hide the GitHub `header`, set sticky elements to `position: static`, close cookie or sign-in banners, and widen small README images (`img.style.width='640px'`). Scroll the target into view (`scrollIntoView(); scrollBy(0,-20)`) and wait 600–800 ms.
@@ -88,8 +104,8 @@ Capture what the script's visual ideas need. That's always **`repo-header.png`**
    `node $S/crop.mjs $P crops.json --clean`. It bounds-checks every crop, prints the sizes and deletes the raws.
    - `repo-header.png`: repo name, about/description, stars. It's shown in the CTA at 959 px wide. If it isn't 1300 tall, set `cta.shotH`.
    - Product panel: a tight crop of the real UI with no browser chrome, at least 420 px wide on screen.
-5. Optional `app-icon.png`: `curl` it from the repo's icon path (it's in `images.json`).
-6. Never recolour, add shadows to, or add a title bar to a screenshot. In the scene it gets a 2.5 px ink outline only (DESIGN.md section 5.7).
+5. Optional `app-icon.png`: `curl` it from the repo's icon path (it's in `images.json`). README product images (mockups, diagrams) from `images.json` are `curl`ed the same way to `assets/shots/_src-<name>.png`.
+6. Never recolour or add shadows to a screenshot, and never draw a title bar above it (no drawn window bar, thin-line bar, fake dots or URL bar). The app's own title bar may stay in the crop. In the scene it gets a 2.5 px ink outline only (DESIGN.md section 5.7).
 7. **README 9:16 screenshot** (always; to post alongside the reel, not used in the scenes): one portrait shot of the README top at exactly 1080×1920.
    - `new_page https://github.com/<owner>/<repo>#readme` → `emulate` viewport `540x960x2` (DPR 2 → 1080×1920; 540 px gives GitHub's narrow layout so the README text stays big), `colorScheme: "dark"`.
    - `evaluate_script`: hide the scrollbar, then scroll so the README box (its README / license tab bar) sits at the top edge:
@@ -102,7 +118,45 @@ Capture what the script's visual ideas need. That's always **`repo-header.png`**
    - `take_screenshot` (viewport, not fullPage) → `$P/renders/<slug>-readme-9x16.png`. No crop step: it's already 9:16.
    - Check it: 1080×1920 (read the PNG header), the top edge is the README tab bar (no file list above it), no scrollbar, and the title, tagline and first lines are readable. If the README opens with a huge banner image, scroll down to where the name and description start instead.
 
-## 5. Build the scenes (creative step: follow DESIGN.md's locked identity exactly; the layout and motion are yours to design)
+### 4.2 Product website
+
+Most tools have a site (the repo's `homepage` in `repo.json`, or the README's first link) whose live UI mock-ups are sharper and richer than the README images. If the user already has it open in Chrome, `list_pages` and reuse that page instead of opening a new one.
+
+1. **Survey before capturing.** `emulate` `1280x1400x2`, dark. Scroll section by section, taking low-quality viewport previews (`format: "jpeg", quality: 50`, no file), and list each section with the beat it could serve. Keep real product UI: app mock-ups, tabbed demos, phone screens, terminal/CLI panels, before/after outputs. Skip text-and-icon cards (draw those in the reel's own style instead), testimonials, pricing and sponsor rows unless the script uses them.
+2. **Clean the page** with `evaluate_script`: hide the scrollbar (`html{scrollbar-width:none}::-webkit-scrollbar{display:none}`), set the sticky/fixed nav to `position: static`, close banners.
+3. **Tabbed or interactive mock-ups:** `take_snapshot` for the uids, `click` each tab, wait about 800 ms, then `take_screenshot` with the mock's `uid` and `filePath: $P/assets/shots/site/<name>.png`. An element shot needs no crop. If it times out (a looping animation), scroll the mock into view, take a viewport `_raw-<name>.png` and crop it (step 6).
+4. **Flatten 3D mock-ups.** UI must be flat and frontal (DESIGN.md 5.1/5.7), but sites often tilt side devices with `perspective`/`matrix3d`. In `evaluate_script`, set `transform` and `perspective` to `none` on the tilted element and its parents, then spread the devices apart with `translateX(±N px)` so none overlap. Read back `getComputedStyle(e).transform` to confirm; a leftover `matrix3d` with only a small translate is fine.
+5. **Small elements get a higher DPR.** Anything under 420 CSS px wide (a single phone) is too small at DPR 2: re-`emulate` at `1280x1400x4`. Page edits like the flattening survive the re-emulate; check with the same read-back. Return to DPR 2 afterwards.
+6. **Crop from measured coordinates, never by eye.** Get the rect with `getBoundingClientRect()` in `evaluate_script`; crop = rect × DPR, plus about 4 CSS px of padding so device frames and panel borders stay whole. `out` may be a subfolder (`"out": "site/phone-chat.png"`). Write all crops into one spec and run `crop.mjs --clean` **once, at the end**, because `--clean` deletes every `_raw-*`.
+7. **Look at every result.** `ffmpeg … hstack` the crops into a small `research/_peek.jpg`, `Read` it, and check: nothing cut off, frontal, sharp, no nav or scrollbar. Then delete the peek.
+8. Anything the narration says about a screenshot still needs its line in `facts.md`; a screenshot shows the real product, it doesn't prove a claim on its own.
+
+### 4.3 Logos
+
+1. Every product or tool **named in the narration** needs a logo (the meet beat usually shows them). Take them from the product's own site or repo: the "works with" / "supports" row, the nav logo, or a sub-page (for example `/agents`, `/integrations`) when the home page lacks one.
+2. Inline SVGs: read `outerHTML` with `evaluate_script`, or `curl` the page into `research/` and slice the `<svg>…</svg>` after its link with `node`. A logo that's an `<img src="/logo.svg">` is `curl`ed directly.
+3. Save each one as `assets/logos/<name>.svg` with `currentColor` / `white` replaced by ink `#ECEBE6`. Keep the product's original as `<name>.svg` next to the ink copy `<name>-ink.svg`. Logos are vector marks drawn in the reel's ink, so this is allowed; screenshots are still never recoloured.
+
+### 4.4 Inventory and clean-up
+
+1. Delete the temp files (`research/_peek*.jpg`, saved HTML, snapshot dumps, crop specs).
+2. Give the user a short inventory table: file → what it shows → the beat it suits. Add one line on what you skipped and why. Screenshots the user drops in (their own app windows) are welcome, but look at what's in them: name any personal data (their own code, folder or file names, emails, tokens) in the table and get an OK before a scene uses it.
+3. Plan for motion while you capture: a screen that will zoom needs pixels to spare (capture at DPR 2–4 so a 1.6× zoom stays sharp), and a beat that tours several tools wants one real shot per tool, so they can push through one window (`fitShot` fills the window's width, or `"cover"` for a wide or short shot). Then go on to step 5, the storyboard (there's no gate here, unless the user asked you to stop after the assets).
+
+## 5. Storyboard → `storyboard/storyboard.png` (check with the user before building)
+
+Run this right after the assets (step 4): the timings, the word cues and the real pictures are all known now, so the whole reel can be planned on paper before any scene code exists. The storyboard is how the user and you agree on the reel; step 6 builds exactly what it shows.
+
+1. Write `$P/storyboard/make-storyboard.cjs`. It `require`s `./storyboard-lib.cjs` (copied by `scaffold`; don't rewrite it). The lib gives you the whole page and its CSS (`write(dir, p)` builds the header, the scene cards and the legend from one data object, shapes documented at `card` and `page`), the frame pieces (`grid`, `caption`, `shotWin`, `shot`, `agentWin`, `logoTile`, `hl`, `klab`, `shift`, `svg`, `ltube`, `ntube`, `lpulse`, `cubeAt`) and the pink annotation layer (`mk`, `marr`, `zoomRect`). It re-exports `L` = `../scripts/lib/reel-lib.cjs` (the `T` tokens, `plate`, `stag`, `workspace`, `stopwatch`, `lead`, `hlBox`, `tube`…). Your generator only describes the scenes: `const SB = require("./storyboard-lib.cjs"); SB.write(__dirname, { name, meta, chain, news, scenes });`. If a reel needs a new frame piece, add it to `make-storyboard.cjs` (or to the project's lib copy), not to the kit. `write` saves `storyboard/storyboard.htm` (`.htm`, never `.html`: Studio lints every `.html` in the project as a composition, and the storyboard page fails that lint). Draw every frame at the reel's real coordinates (1080×1920, grid field, caption band, DESIGN.md) with the real screenshots and logos from step 4, then scale it down for the page (`transform: scale(0.5)`). Coordinates you draw here are the ones step 6 uses.
+2. The page (dark, the reel's palette and Inter):
+   - **Header:** the transition chain (every cut and the object that carries it, e.g. `phone → logo tile`), what's **new in this reel** (SKILL.md rule 7: name each new object, pattern or motion primitive and the scene that uses it), and a legend.
+   - **One card per scene, in order, one per row:** two key frames **A** and **B**, each labelled with its local time and the word it lands on, the caption drawn in the caption band with the active word on lime. Beside them: the narration line, numbered motion steps that each name their cue word and time from `words.json` (`On "phone" (4.56) the real phone screenshot rises in…`), the transition out, and the assets used. Use a filmstrip for a scene that pushes several screens through one window.
+   - **Annotations in pink (`#FF5FA2`) only:** numbered circles that match the steps, dashed arrows for motion, dashed boxes for zoom regions. Pink never appears in the reel; the legend says so.
+3. Render it with Chrome DevTools MCP: `new_page file:///…/storyboard/storyboard.htm`, `emulate` the viewport to 2640×1400 at DPR 1, `take_screenshot` with `fullPage: true` and `filePath: $P/storyboard/storyboard.png`.
+4. Read the PNG and check it the way step 7 checks the reel: nothing spills out of a frame or a card, no overlaps between objects, plates, labels or markers, screenshots at most 1.6× inside their window, lime under 10%, every step has a cue word. Fix the generator and render again; never patch the HTML.
+5. Show the user the path, one line per scene (the key frames, the motion beats on their words), the transition chain, the new primitives, and anything they should OK (a screenshot with personal data, an upscaled image). **Wait for their go-ahead.** Apply their edits in the generator, re-render, and show it again. Then go on to step 6.
+
+## 6. Build the scenes (creative step: follow DESIGN.md's locked identity exactly; the layout and motion are yours to design)
 
 Write one file per scene: `$P/scripts/scenes/NN-<id>.cjs` (ids from `timing.json`).
 ```js
@@ -120,12 +174,21 @@ module.exports = (L, s, reel) => {
   - Start from `kit/examples/v4/_plan.cjs`: set each scene's `lift` and `camEnd`, the rects `R` the cuts connect, and one `hand(from, to, A, B, t0, cut, land)` per cut. `cut` must equal the next scene's start from `timing.json`, and `land` sits on a music beat: `const beat = L.beatGrid(timing.beats)` (from `timing.json`; it follows the bed across restarts). If `beats` is null, the track's tempo isn't set: ask the user for it, or land cuts on words only. Plan the cuts after `timing.json` exists, and rebuild the plan if timing changes.
   - A scene returns `cam: P.cam(key)`. It also returns `fade: false` and `over: mframe(...)` when it hands off, and uses `morphCode` / `L.carry` on both sides of each cut. The extra return keys are `over` (HTML in the screen layer above the camera), `cam` (`{s, x, y, t0, t1}`) and `fade` (false = no end fade).
   - Timeline helpers available in `anim`: `E.*` eases, `seg`, `slide`, `fadeUp`, `draw`/`untrim`, `wipe`/`unwipe`, `wipeIn`/`wipeOut`, `pop`/`unpop`, `lead`/`unlead`, `kin`/`kout`, `type`/`untype`, `plateIn`, `away`, `drift`, `run`, `mfSet`/`morph`, `flow`. Lib objects: `appWinC`, `mframe`, `trimRect`, `hlTrim`, `pulse`, `klabel`, `typed`, `MB()`.
+  - **Screenshot-heavy reels** (worked example `kit/examples/paseo/`, DESIGN.md 5.4 "Screenshot objects" and 7 "Screenshot motion"): objects `screenWin` + `fitShot`, `shotBox`, `agentWin`, `rails`, `dimLine`; code builders that return `anim` strings `zoomIn`, `pushScreens`, `converge`, `lensIn`/`lensOut`, `stretch`. `kit/examples/paseo/make-storyboard.cjs` is the matching storyboard generator.
   - Gotchas (each one cost a debug round): a later `fromTo` on the same property needs `immediateRender: false`. Tween trims with `attr: {"stroke-dashoffset"}`, never the CSS property. Motion-blurred elements whose contents animate are carried by static flyers. No camera or drift longer than `L.SETTLE` (the outlines shimmer). Every element appears on its own word, so land a handoff on whatever is spoken at the cut. `data-layout-allow-overlap` is not inherited, so put it on the children that are meant to overlap too. Don't run `hyperframes add motion-blur`: the runtime already ships as `assets/js/motion-blur.js`, and the registry component (a paste-in snippet under `compositions/components/`) fails Studio's lint (no `data-composition-id`, too many lines).
+  - More gotchas (Paseo):
+    - `box-sizing: border-box` is global, so a `.win` (and a `screenWin` viewport) holds (w − 5) × (h − 5) inside its edges.
+    - All tweens on one element's `scale` must share a `transformOrigin` (`pop` and `converge` both use 50% 50%), or scrubbing jumps when the second tween takes over.
+    - When an in and an out time come from two close words, assert out > in + a minimum hold (about 0.6s), or a label sticks or flashes. Derive the out time with `Math.max(nextWord, in + hold)`.
+    - An in-scene `mframe` covers whatever comes after it in the DOM, so place it before the elements it must stay under.
+    - Trims and dimension lines start hidden: build them with `stroke-dashoffset="1"` and bring them on with `draw()`.
+    - Measure zoom origins in the screen's own px (the shot as sized by `fitShot`), not in frame coordinates.
+    - The same image `src` twice in one composition trips `duplicate_media_discovery_risk`; draw the second copy as a CSS `background: url(...)`.
 - If a new object is needed (terminal, DB, cloud…), build it from iso boxes (or the Anatomy kit, DESIGN.md 5.8) and the `T` tokens **in this project's `scripts/lib/reel-lib.cjs`**. Never edit the skill's `kit/` or docs while making the reel: it moves into the skill only by SKILL.md rule 8.
 - The **CTA layout is fixed** (DESIGN.md section 6.1) and comes from `_cta.cjs` + `reel.json` → `cta`. Don't write `08-cta.cjs` unless the CTA truly can't be expressed through that config, or the reel uses v4 match cuts. In that case copy `kit/examples/v4/08-cta.cjs` (same layout and config, v4 motion, the inbound cut lands on the first trust plate).
 - Run `node $P/scripts/build-scenes.cjs`. It writes `compositions/scenes/*.html` and lists each scene's source. A missing file renders a "TODO" placeholder, so a full preview works at any time. Edit the `.cjs` files, never the generated HTML.
 
-## 6. Validate **[script: `verify.mjs`]**
+## 7. Validate **[script: `verify.mjs`]**
 
 ```bash
 node $S/verify.mjs $P        # build-scenes → check --strict → snapshots in snaps/review/
@@ -135,15 +198,18 @@ node $S/verify.mjs $P        # build-scenes → check --strict → snapshots in 
    - `gsap_timeline_set_initial_hide`: move the hides to `gsap.set` outside the timeline.
    - `negative_z_index`: restructure the elements; don't use z-index −1.
    - A contrast failure on a dark-filled element fading in: use a clipPath wipe or a `tl.set` swap instead of an opacity fade.
-2. Snapshots are taken at each scene's mid-point plus total − 0.4 (the CTA end). `GEMINI_API_KEY` is removed from the environment, so nothing leaves the machine.
+   - `duplicate_media_discovery_risk` (the same img src with the same start and duration): draw the second copy as a CSS `background: url(...)` (the lens inset does this).
+   - `overlapping_gsap_tweens`: two tweens on the same property of one element overlap in time (typically a zoom in and its zoom out). Retime them so one ends before the other starts.
+   - `Navigation timeout of 10000 ms exceeded` on the first run after a build: a cold load of heavy screenshots, not a composition error. Run verify again (the second, warm load passes), or run `npx hyperframes check --strict --timeout=40000` once.
+2. Snapshots are taken at each scene's mid-point plus total − 0.4 (the CTA end). `GEMINI_API_KEY` is removed from the environment, so nothing leaves the machine. Run `verify.mjs $P --dense` before the preview too: it adds a frame every 0.6s to `snaps/dense/contact-sheet-N.jpg`. Midpoints miss what happens between them (a label that never leaves, a trim drawn too early, two objects crossing mid-move); in Paseo the dense sheets caught bugs the midpoints didn't. Read every sheet against the storyboard.
 3. **Visual self-review (judgement):** open `snaps/review/contact-sheet.jpg` next to `references/golden/contact-sheet-*.jpg` and go through the DESIGN.md section 9 checklist. Check for: no overlaps; art centred in the grid field; at most 10% lime; no header or hero word; captions readable; screenshot outlines; CTA cursor not over the text. Fix and run verify again.
 
-## 7. Preview → **GATE 2**
+## 8. Preview → **GATE 2**
 
 1. `npx --yes hyperframes@0.8.156 preview --background` (from `$P`), then `preview --status`. Give the user the Studio URL (`http://localhost:<port>/#project/<slug>`).
 2. Tell them they can edit directly in Studio. **Stop and wait for their approval.** Apply feedback in the scene files or the script, rebuild, re-verify and refresh. (If the script text changes, re-run `audio.mjs` from `tts`.)
 
-## 8. Render (only after an explicit "render it") **[script: `render.mjs`]**
+## 9. Render (only after an explicit "render it") **[script: `render.mjs`]**
 
 - `node $S/render.mjs $P` → `renders/<slug>.mp4` at 30 fps / standard, then checks 1080×1920, length = total, an audio stream and integrated loudness (−22…−12 LUFS).
 - The user can also export from Studio (that's how v3 was made: 30 fps, mp4, standard).
@@ -151,14 +217,14 @@ node $S/verify.mjs $P        # build-scenes → check --strict → snapshots in 
 
 ---
 
-## 9. Deterministic scripts (`scripts/`)
+## 10. Deterministic scripts (`scripts/`)
 
 All of them take the project dir as the first argument (except `setup` and `scaffold`) and read `scripts/config.json` merged with `scripts/config.local.json` (`_common.mjs` helpers; model checks in `models.mjs`, pinned files in `models.json`).
 
 | Script | Does | In → Out |
 |---|---|---|
 | `setup.mjs [--quick] [--install-runtime]` | Doctor: tools, Python packages, models (size + sha256), Parakeet cache + runtime, music bed. Prints download links for anything missing; never downloads a model | machine → ready / numbered fix list |
-| `scaffold.mjs <url> [--slug]` | Copies `kit/` (minus `examples/`) and the music bed into `<videosDir>/<slug>/`; meta, package, `reel.json`, folders | URL → project skeleton |
+| `scaffold.mjs <url> [--slug]` | Copies `kit/` (minus `examples/`) and the music bed into `<videosDir>/<slug>/`; meta, package, `reel.json`, folders (incl. `storyboard/`) | URL → project skeleton |
 | `intake.mjs` | `gh api` metadata, raw README, image list (badges removed, stack logos split out), releases, languages, `facts.md` skeleton | `reel.json` → `research/*` |
 | `tts.py` | Kokoro af_heart 1.14, trim, 0.3 s gaps, loudnorm −16 LUFS / 48 kHz, 87.5 s voice limit | `lines.json` → `narration.wav`, `narration.json` |
 | `transcribe.mjs` | Parakeet; cache filled from `models/parakeet/` (links printed if missing), word-count check | wav → `transcript.json` |
@@ -167,8 +233,8 @@ All of them take the project dir as the first argument (except `setup` and `scaf
 | `captions.mjs` | Dark caption groups | → `compositions/captions.html` |
 | `assemble.mjs` | Root index + bg grid | → `index.html`, `compositions/bg.html` |
 | `audio.mjs [--from step]` | Runs the six above in order | `lines.json` → assembled project |
-| `crop.mjs <spec> [--clean]` | Bounds-checked ffmpeg crops, size report | `_raw-*.png` → `assets/shots/*.png` |
-| `verify.mjs [--no-snap]` | `build-scenes` → `check --strict` → snapshots | project → pass/fail + `snaps/review/` |
+| `crop.mjs <spec> [--clean]` | Bounds-checked ffmpeg crops, size report | `_raw-*.png` → `assets/shots/*.png` (subfolders like `site/` allowed) |
+| `verify.mjs [--no-snap] [--dense]` | `build-scenes` → `check --strict` → snapshots (`--dense`: plus a frame every 0.6s) | project → pass/fail + `snaps/review/` (+ `snaps/dense/`) |
 | `render.mjs [--quality q]` | Render + ffprobe/ebur128 checks | project → `renders/<slug>.mp4` |
 
 In the project (from the kit): `scripts/build-scenes.cjs` (driver), `scripts/lib/reel-lib.cjs` (v3 objects plus the v4 motion layer; the v3 helpers now use the `E` eases and a settling camera, so output is no longer byte-identical to v3's generator), `scripts/scenes/_cta.cjs` (fixed CTA).

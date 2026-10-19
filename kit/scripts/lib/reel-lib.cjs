@@ -730,6 +730,94 @@ const todoScene = (sc) => ({
   anim: `\n      fadeUp("#${sc.p}-todo", 0.1);`,
 });
 
+// ---------- more objects + motion (Paseo reel) ----------
+// screen frame: a bare 2.5px ink outline (no title bar: DESIGN.md 5.7) whose inside is a viewport (#id-v, overflow
+// hidden) holding one or more screens (#sid, absolute, top-left).
+// A screen = { id, src, w, h, x?, y?, inner?, attr? }: inner = extra HTML that moves with it (trim boxes that zoom with the
+// shot); attr = extra attributes (MB() for screens that push). #id-o = a fixed layer over the screens (o.over: trim boxes
+// that don't zoom). The viewport sits in #id-c, so wipeOut("#id-c") leaves the bare outline for a morph frame.
+// Viewport size: (w - 5) x (h - 5).
+const screenWin = (id, x, y, w, h, screens, o = {}) => {
+  const vw = w - 5, vh = h - 5;
+  return `<div id="${id}" class="win" ${o.attr || ""} style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div id="${id}-c" class="wc">` +
+    `<div id="${id}-v" style="position:absolute;left:0;top:0;width:${vw}px;height:${vh}px;overflow:hidden;background:${T.g900}">` +
+    screens.map((sc) => `<div id="${sc.id}" ${sc.attr || ""} data-layout-allow-overlap style="position:absolute;left:${sc.x || 0}px;top:${sc.y || 0}px;width:${sc.w}px;height:${sc.h}px">` +
+      `<img src="${sc.src}" alt="" data-layout-allow-overlap style="position:absolute;left:0;top:0;width:${sc.w}px;height:${sc.h}px">${sc.inner || ""}</div>`).join("") +
+    `<div id="${id}-o" data-layout-allow-overlap style="position:absolute;inset:0">${o.over || ""}</div></div>` +
+    `</div></div>`;
+};
+// screen size for a shot of aspect ar in a viewport vw x vh: "width" fills the width (crops the bottom), "cover" fills both
+const fitShot = (ar, vw, vh, mode = "width") => {
+  if (mode === "cover" && vw / vh < ar) return [Math.round(vh * ar), vh];
+  return [vw, Math.round(vw / ar)];
+};
+// bare framed shot (a phone screen, a logo tile): .win box (2.5px ink edge) with the image (#id-i) filling it, in #id-c.
+// pad = inset of the image as a fraction of the box (logo tiles; the image keeps its aspect).
+const shotBox = (id, x, y, w, h, src, o = {}) => {
+  const pad = o.pad || 0, iw = w - 5, ih = h - 5;
+  return `<div id="${id}" class="win" ${o.attr || ""} style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div id="${id}-c" class="wc">` +
+    `<img id="${id}-i" src="${src}" alt="" data-layout-allow-overlap style="position:absolute;left:${r1(iw * pad)}px;top:${r1(ih * pad)}px;width:${r1(iw * (1 - 2 * pad))}px;height:${r1(ih * (1 - 2 * pad))}px${pad ? ";object-fit:contain" : ""}">` +
+    (o.inner || "") + `</div></div>`;
+};
+// agent window: its logo, placeholder rows, a lime progress bar (#id-pf, grows with scaleX); contents in #id-c
+const agentWin = (id, x, y, w, h, title, logo, o = {}) => {
+  const lx = o.lx ?? (o.logo === false ? 22 : 96);
+  const rows = (o.lines || [0.8, 0.62, 0.7]).filter((f, i) => 70 + i * 34 + 16 < h - 66)
+    .map((f, i) => `<div class="win-ph${i ? " lt" : ""}" style="left:${lx}px;top:${70 + i * 34}px;width:${Math.round((w - lx - 26) * f)}px;height:16px"></div>`).join("");
+  return appWinC(id, x, y, w, h, title,
+    (o.logo === false ? "" : `<img src="assets/logos/${logo}.svg" alt="" style="position:absolute;left:22px;top:66px;width:56px;height:56px">`) + rows + (o.extra || "") +
+    `<div class="pbar" style="left:22px;right:22px;bottom:22px;height:28px"><div id="${id}-pf" class="pfill"></div></div>`, o);
+};
+
+// branch rails: a git graph. trunk = path d, branches = [d, ...] (neutral tubes that draw on, each with a lime twin
+// #id-g<i> that draws over it when changes flow down it), nodes = [[x, y], ...] commit dots #id-n<k> that pop as the trim passes.
+const rails = (id, trunk, branches, nodes) =>
+  `<g id="${id}">` + dtube(`${id}-t`, trunk, { w: 12 }) +
+  branches.map((d, i) => dtube(`${id}-b${i}`, d, { w: 12 })).join("") +
+  branches.map((d, i) => dtube(`${id}-g${i}`, d, { w: 12, fill: T.lime })).join("") +
+  nodes.map(([x, y], k) => `<circle id="${id}-n${k}" cx="${x}" cy="${y}" r="14" fill="${T.hi}" stroke="${T.ink}" stroke-width="2.5"/>`).join("") + `</g>`;
+// dimension line: a measured span with end ticks; the line (#id-l0/l1) trims out from its centre, the ticks (#id-a/b) pop
+const dimLine = (id, x1, x2, y, tick = 20) => {
+  const m = r1((x1 + x2) / 2), p = (k, d) => `<path id="${id}-${k}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="${d}" fill="none" stroke="${T.ink}" stroke-width="2.5" stroke-linecap="square"/>`;
+  return `<g id="${id}">${p("l0", `M${m} ${y} H${x1}`)}${p("l1", `M${m} ${y} H${x2}`)}` +
+    `<path id="${id}-a" d="M${x1} ${y - tick} V${y + tick}" stroke="${T.ink}" stroke-width="2.5"/><path id="${id}-b" d="M${x2} ${y - tick} V${y + tick}" stroke="${T.ink}" stroke-width="2.5"/></g>`;
+};
+
+// ---- timeline code builders (strings for a scene's anim) ----
+// stretch tether: a live tube (and the pulses riding it) re-routes as the thing it is tied to moves. Every path under
+// the selectors gets its d tweened A -> B (same command structure, so GSAP interpolates each number).
+const stretch = (sels, dA, dB, at, dur, ease = "E.inOut") =>
+  `tl.fromTo(q("${sels}"), { attr: { d: "${dA}" } }, { attr: { d: "${dB}" }, duration: ${dur}, ease: ${ease}, immediateRender: false }, ${r2(at)});`;
+// detail lens: a trim box draws on a region of a shot (box = an hlTrim id), then a morph frame (mf, an mframe in .lift)
+// lifts out of that region and opens into the inset (a shotBox showing the region magnified), which appears as the
+// frame lands, its image settling from a slight push. src / dst = [x, y, w, h] in .lift coords.
+const lensIn = (box, mf, inset, src, dst, at, dur = 0.45) => `
+      draw(q("#${box} path"), ${r2(at)}, 0.4);
+      mfSet("${mf}", ${js(src)}); gsap.set(q("#${mf}, #${inset}"), { opacity: 0 });
+      tl.set("#${mf}", { opacity: 1 }, ${r2(at + 0.3)});
+      morph("${mf}", ${js(src)}, ${js(dst)}, ${r2(at + 0.3)}, ${dur}, E.inOut);
+      tl.set("#${mf}", { opacity: 0 }, ${r2(at + 0.3 + dur)}); tl.set("#${inset}", { opacity: 1 }, ${r2(at + 0.3 + dur)});
+      tl.fromTo("#${inset}-i", { scale: 1.12 }, { scale: 1, duration: 0.6, ease: E.outQ, transformOrigin: "50% 50%" }, ${r2(at + 0.3 + dur)});`;
+const lensOut = (box, inset, at) => `
+      wipeOut("#${inset}", ${r2(at)}, 0.26);
+      untrim(q("#${box} path"), ${r2(at + 0.08)}, 0.28);`;
+// converge into a window: each item [sel, x, y, w] (CSS top-left and width of a square item in .lift) flies its centre
+// to point pt, shrinking to scale k about its centre (the same origin pop() uses, so scrubbing never jumps) and
+// accelerating in (E.in), staggered, and is hidden on arrival. Give the items MB() and static contents.
+const converge = (items, pt, at, dur = 0.42, st = 0.05, k = 0.25) => items.map(([sel, x, y, w], i) => {
+  const t = r2(at + i * st), dx = r2(pt[0] - (x + w / 2)), dy = r2(pt[1] - (y + w / 2));
+  return `
+      tl.fromTo("${sel}", { x: 0, y: 0, scale: 1 }, { x: ${dx}, y: ${dy}, scale: ${k}, duration: ${dur}, ease: E.in, transformOrigin: "50% 50%", immediateRender: false }, ${t});
+      tl.set("${sel}", { opacity: 0 }, ${r2(t + dur)});`;
+}).join("");
+// screen push: screen a leaves left as screen b enters from the right (one eased move; give both MB())
+const pushScreens = (a, b, vw, at, dur = 0.55) => `
+      tl.fromTo("#${a}", { x: 0 }, { x: ${-vw}, duration: ${dur}, ease: E.inOut, immediateRender: false }, ${r2(at)});
+      tl.fromTo("#${b}", { x: ${vw} }, { x: 0, duration: ${dur}, ease: E.inOut, immediateRender: false }, ${r2(at)});`;
+// zoom inside a window: the screen scales about (ox, oy) (px in its own coords) while the frame stays put
+const zoomIn = (sel, at, s, ox, oy, dur = 0.7, from = 1) =>
+  `tl.fromTo("${sel}", { scale: ${from} }, { scale: ${s}, duration: ${dur}, ease: E.cam, transformOrigin: "${ox}px ${oy}px", immediateRender: false }, ${r2(at)});`;
+
 module.exports = {
   fs, path, T, C, S, make, tube, arrow, leader, check,
   r1, txt, label, lead, dtube, barrow, cube, bez, bpath, samples, nsv,
@@ -740,4 +828,5 @@ module.exports = {
   SETTLE, MB, mframe, appWinC, trimRect, hlTrim, pulse, klabel, typed, beatGrid,
   anat, selector, board,
   CSS, HELPERS, scene, sceneRaw, limeEdges, keyOf, makeCues, ctaScene, todoScene,
+  screenWin, fitShot, shotBox, agentWin, rails, dimLine, stretch, lensIn, lensOut, converge, pushScreens, zoomIn,
 };

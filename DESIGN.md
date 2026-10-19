@@ -130,6 +130,12 @@ Top = `g100` (or `hi` for small parts), left = `g300`, right = `g500`. Recesses 
   - **Kinetic label** (`klabel(id, x, y, lines, {a})`): a callout label (same type as section 3) with each word in a mask, so it can rise in word by word.
   - **Typed value** (`typed(id, text)`): text whose characters rise in one by one inside a mask. Use it for field values and terminal lines. `--` stays one unit.
   - **Label plate mask:** a plate's name sits in `.pt > .pw`, so `plateIn()` can wipe the frame and rise the name. It looks the same at rest.
+- **Screenshot objects (Paseo, `kit/examples/paseo/`):**
+  - **Screen frame** (`screenWin(id, x, y, w, h, screens, {over})`): a bare 2.5px ink outline (no title bar, 5.7) whose inside is a viewport (`#id-v`, (w − 5) × (h − 5), overflow hidden) holding one or more real screens (`{id, src, w, h, x?, y?, inner?, attr?}`) that push, zoom and pan inside the fixed frame. `inner` HTML moves and zooms with its screen; `over` is a fixed layer (`#id-o`) for trim boxes that must not zoom. The viewport sits in `#id-c`, so the bare outline is left for a morph frame. Size screens with `fitShot(ar, vw, vh, "width" | "cover")` and the frame to the screen (h = shot height + 5), so no empty strip shows. A single still shot can also use `shotBox`.
+  - **Shot box** (`shotBox(id, x, y, w, h, src, {pad, inner})`): a bare screenshot (a phone screen) or a logo tile in the 2.5px ink outline, contents in `#id-c`, so it can be a morph source or target. `pad` insets a logo and keeps its aspect.
+  - **Agent window** (`agentWin(id, x, y, w, h, title, logo, {lines, logo, lx, extra})`): a drawn app window for one agent: its logo, placeholder rows, and a lime progress bar (`#id-pf`, grows with `scaleX`). `lx` moves the rows' left edge when `extra` puts something in the logo's place.
+  - **Branch rails** (`rails(id, trunk, branches, nodes)`): a git graph. A neutral trunk tube and branch tubes draw on; each branch has a lime twin (`#id-g<i>`) that draws over it when changes flow down it, and commit dots (`#id-n<k>`) pop as the trim passes them.
+  - **Dimension line** (`dimLine(id, x1, x2, y)`): a measured span with end ticks. The line trims out from its centre both ways, and the ticks pop at its ends. Use it for a distance or a size ("away from your desk"), with a kinetic label above it.
 - New tools often need new objects (terminal, database cylinder, server rack, cloud, file stack, Git branch, container box, lock, API block). Build each one from `make().box()` (or the Anatomy kit, 5.8) and the same tones in the reel project. It joins the kit library by SKILL.md rule 8.
 
 ### 5.5 Tags
@@ -145,7 +151,11 @@ A flat bar 68px tall: `hi` fill, 2.5px ink outline, square corners, Inter 600 30
 
 ### 5.7 Screenshots and product images
 - Real product images and screenshots (app UI, README diagrams, docs pages, demo frames, example outputs) can appear in any scene wherever they explain the beat better than a drawing, alone or combined with iso objects, plates and labels. They're part of the open layout, not limited to the meet beat.
-- Show the real UI, flat and frontal, inside a plain **2.5px ink outline**. Don't add a title bar or three-dot chrome; the app's own UI is the frame. No shadow, rotation, perspective or rounded corners.
+- Show the real UI, flat and frontal, inside a plain **2.5px ink outline**. No shadow, rotation, perspective or rounded corners.
+- **Title bars:**
+  - **Allowed:** the app's own title bar when it is part of the captured image (the screenshot includes the real window chrome).
+  - **Not allowed:** any title bar drawn by the reel above or around a screenshot: the drawn window bar (46px bar, ring dots, a title such as "Paseo"), a thin-line bar, a strip of dots or fake traffic lights, a fake URL bar. A screenshot always sits in the bare outline (`screenWin` when screens push or zoom inside it, `shotBox` or `ph` for a still); its own UI is the frame.
+  - The drawn window bar (`appWin`, `appWinC`, `agentWin`) is only for drawn windows with placeholder contents (a generic "Claude Code" or "Codex" app), never for a real screenshot.
 - Pages are captured light or dark as they appear; never recolour a screenshot.
 - Size them to read on a phone: at least 420px wide for an app panel and the full field width (964px) for a web page.
 
@@ -190,6 +200,12 @@ These are proven patterns from v3. A beat may use one, combine two, or use a new
 | **value switch** (HarnessRouter) | change `codex` to `claude-code` | The real request field types the first value and traffic runs down its lane. On "change" the value backspaces and retypes, the lime lane retracts and redraws to the new target, its tag moves, and a trim box rings the field on the word that names it. |
 | **split → merge → grow** (HarnessRouter) | each session gets its own workspace | One plate splits into three (y steps of 210) that each get an arrow and a sealed workspace. On the next clause they merge back, and the survivor's outline grows into a window (an in-scene morph) that then fills on its words. |
 | **screenshot push** (HarnessRouter) | slides, spreadsheets, dashboards | One window holds several screenshots. On each spoken item the current one pushes out left as the next enters from the right (one 0.6s `E.inOut` move, motion-blurred), while a 2×2 checklist fills in below. |
+| **converge into one place** (Paseo) | brings Claude Code, Codex, Copilot into one place | The real app window sits in the field; a logo tile pops on each spoken name and drops a lime tube into the window. On "into one place" every tile flies into the window's centre, shrinking and accelerating in (`converge`), and a trim box lands on the real UI that proves it (the tab strip with both agents side by side). |
+| **push in on the proof** (Paseo) | give different agents different tasks | A real chat screenshot in a screen window; the screen zooms inside the fixed frame onto the lines that show the claim (two `create_agent` calls), a trim box draws round each on its words, then the zoom eases back out before the next beat builds below. |
+| **branch rails** (Paseo) | separate Git worktrees, different branches | A MAIN rail trims on left to right, its commit dots popping as the trim passes; two branch rails fork off into two sealed workspaces. The plates get their real names (issue numbers) on "different branches", a dashed bridge between the branches gets an X tag, then lime changes flow down each branch into its own box and each gets a check. |
+| **detail lens** (Paseo) | check their progress | A trim box draws on a small region of a screenshot (a phone's Working list), then its outline lifts out as a morph frame and opens into a magnified inset beside it (`lensIn`), with a kinetic label. It closes back (`lensOut`) before the next beat. |
+| **stretch tether** (Paseo) | manage them from your phone, even when you're away | Desktop window above, phone below, tied by a live lime tube with pulses. On "away" the phone slides off to the side while the tube re-routes with it, still pulsing (`stretch`), and a dimension line measures the gap with a label (AWAY FROM YOUR DESK). |
+| **tool tour in one window** (Paseo) | editor, terminal, code diffs, pull requests, all in one interface | One wide screen window, a 2×2 plate grid below. Each tool's real screen pushes in on its word (`pushScreens`) and ticks its plate; on the diff and the PR the screen zooms into the named region (the code, the passing checks). On "all in one interface" it eases back out and a trim box draws round each pane of the one app. |
 
 A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s while the grid stays, then the next beat builds. In a match-cut reel the outgoing beat clears with exits instead (`kout`, `wipeOut`, `untrim`, `away`), so the morph frame is the last thing standing.
 
@@ -254,6 +270,13 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
   - **Staggered reveals:** `wipeIn(q(...), at, dur, stagger)` across a window's placeholder rows, plates or checklist rows (a stagger of 0.03–0.1s).
   - **Exits:** clear a beat with the reverse helpers (`kout`, `unlead`, `untrim`, `unpop`, `unwipe`, `wipeOut`, `away`), staggered over 0.2–0.4s before the cut, never a blanket fade.
   - **Show it on its word.** An object never waits on screen for its line: a window, terminal or plate appears on the word that names it. If a handoff would land on something before its word, land it on the first object that *is* spoken at the cut instead (v4: the CTA's window lands on "Self-hosted", and the Terminal waits for "Docker").
+- **Screenshot motion (Paseo; the scenes are in `kit/examples/paseo/`, the helpers in the kit lib):**
+  - **Zoom inside a window** (`zoomIn(sel, at, s, ox, oy, dur, from)`): the screen scales about a point measured in the shot's own px while the frame holds still (`E.cam`, scale ≤ 1.6). Zoom out with the same origin (`from = s`, `s = 1`), and never let the in and out tweens overlap. Trim boxes that ring zoomed UI go in the window's fixed `over` layer at the zoomed coordinates, so their strokes stay 4px.
+  - **Screen push** (`pushScreens(a, b, vw, at, dur)`): the image swap as one move: a leaves left while b enters from the right, both motion-blurred. A zoom on b starts when the push lands.
+  - **Converge** (`converge(items, pt, at, dur, stagger, k)`): items fly their centres to one point, shrinking to `k` about their centres and accelerating in (`E.in`), staggered 0.05s, hidden on arrival. The items carry `MB()` and static contents.
+  - **Detail lens** (`lensIn(box, mf, inset, src, dst, at)` / `lensOut(box, inset, at)`): trim box, then a morph frame from the region to the inset, then the inset swaps in and its image settles from scale 1.12. Draw the inset's magnified image as a CSS background of the same shot (`background: url() -x·k -y·k / W·k H·k`), not a second `<img>` with the same src.
+  - **Stretch tether** (`stretch(sels, dA, dB, at, dur)`): a tube and its pulses tween their path `d` from A to B as the thing they are tied to moves. A and B need the same command structure so each number interpolates.
+  - **Dimension line:** `draw()` the two half-lines out from the centre, then `pop()` the ticks as the line reaches them.
 - **Sync:** every visual event lands on its word in `transcript.json`. Objects appear just before or on the word that names them, and tags pop on the word that confirms them.
 - **Banned (locked, these break the calm style):** `back.out`, elastic, bounce, overshoot, rotation entrances, shakes, whip pans, glitches, spins and infinite loops.
 - **Seek-safe GSAP only:** use one paused timeline per scene and `fromTo` tweens. Hide initial states with `gsap.set` outside the timeline. A later tween on the same property needs `immediateRender: false`; without it, the later `fromTo` writes its start value at build time and hides the element before its turn. No `Math.random` and no clocks.
@@ -285,7 +308,7 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
 **Don't**
 - Use gradients, shadows, glows, blur as a look (motion blur only on moving parts), 3D renders or photo textures.
 - Use rounded SaaS cards, pills, emoji, stickers or rotated stamps.
-- Use a header, hero word, title bar on screenshots, or text on lime.
+- Use a header, hero word, a drawn title bar on a screenshot (any bar, dots or URL strip the reel adds; 5.7), or text on lime.
 - Use more than one accent colour, red/green status, or pure white lines.
 - Overlap objects, crowd a frame or leave objects floating unconnected.
 - Use bouncy easing, shakes, spins or anything that loops forever.
