@@ -2,11 +2,11 @@
 
 This file defines how every frame of a repo reel looks and moves. It is the v3 MultiPath reel turned into rules.
 It has two parts:
-- **Locked identity** (sections 1–3, the frame anatomy rules in 4, the line work and screenshot rules in 5, the CTA in 6.1, the bans in 7, and 8 captions). This is the brand. It never changes between reels.
+- **Locked identity** (sections 1–3, the frame anatomy rules in 4 (frame chrome included), the line work and screenshot rules in 5, the CTA in 6.1, the bans in 7, and 8 captions). This is the brand. It never changes between reels.
 - **Open: motion and layout.** The scene patterns in 6 and the motion primitives in 7 are proven examples, not a closed list. Each reel should design the scenes its content needs, as long as every frame stays inside the locked identity.
 Visual references: `references/style-reference-dark.png` (target look) and `references/golden/` (v3 frames, the quality bar).
 
-**Contents:** 1 Style · 2 Palette · 3 Type · 4 Frame anatomy · 5 Building blocks (5.1 Projection, 5.2 Line, 5.3 Fills, 5.4 Objects, 5.5 Tags, 5.6 Plate, 5.7 Screenshots, 5.8 Crafted objects) · 6 Scene patterns (6.1 CTA) · 7 Motion (eases, primitives, v4 motion layer, bans) · 8 Captions · 9 Checklist
+**Contents:** 1 Style · 2 Palette · 3 Type · 4 Frame anatomy (frame chrome) · 5 Building blocks (5.1 Projection, 5.2 Line, 5.3 Fills, 5.4 Objects, 5.5 Tags, 5.6 Plate, 5.7 Screenshots, 5.8 Crafted objects) · 6 Scene patterns (6.1 CTA) · 7 Motion (eases, primitives, v4 motion layer, v5 implode cut, bans) · 8 Captions · 9 Checklist
 
 ---
 
@@ -63,6 +63,7 @@ Rules:
 | Label plate ("FREE + OPEN-SOURCE") | 30px | 600 | ALL CAPS, `0.04em` | Inside a plate (section 5.6). |
 | Window title ("Browser") | 26px | 500 | Sentence case | Drawn window title bars only. |
 | Data readout ("9.6 MB/s", "10 Mbps") | 30–56px | 600 | As written, tabular numbers | Inside windows and above bars. |
+| Figure readout ("FIG. 03 / 12") | 24px | 500 | ALL CAPS, `0.12em`, tabular numbers | The frame chrome only (section 4). |
 | CTA line ("Follow for more useful tools") | 56px | 600 | Sentence case, `-0.01em` | The CTA frame only. |
 | URL plate | 34px | 500 | As written, `0.01em` | The CTA frame only. |
 | Captions | 54px | 600 | Sentence case, `-0.01em` | Section 8. |
@@ -77,10 +78,16 @@ Text is always ink, on the page or on a dark plate. Labels never sit on top of o
 |---|---|---|
 | Top safe area | y 0 → 305 | Empty page. The Instagram UI sits here. |
 | **Grid field** | x 58 → 1022, y 305 → 1305 | All illustration, labels and screenshots. |
+| Chrome band | y 1320 → 1360 | The figure readout and scene bars (frame chrome, below). Nothing else. |
 | Caption band | y 1420 → 1540 | The caption plate, centred. |
 | Bottom safe area | y 1540 → 1920 | Empty. The Instagram UI sits here. |
 
 - **Grid:** 11 vertical rules at x = 58 + 96.4·i (i = 0…10) from y 305 to 1305, plus a horizontal rule at y 800, all `grid` 1.5px. A bottom hairline at y 1305 in `rule`. The grid is a persistent background composition: it never moves, fades or changes between scenes.
+- **Frame chrome (v5, UncensoredAi):** the margins of a technical manual's page, drawn in the same bg composition as the grid (`L.chrome`, written by `build-scenes.cjs`). It is part of every reel:
+  - **Registration marks:** four 22px L-shaped corner marks, 12px outside the grid field's corners, `dark` 2px.
+  - **Figure readout:** `FIG. 03 / 12` at x 58 in the chrome band, Inter 500 24px, ink, `0.12em`, tabular figures. The scene number is an odometer (`odo`/`roll`): at every cut its digits roll forward (0.5s `E.inOut`) instead of swapping.
+  - **Scene bars:** one 26 × 5 bar per scene (6px gaps), right-aligned to x 1022 in the chrome band, `rule` track; each fills ink (scaleX, 0.4s `E.out`) as its scene starts.
+  - No lime, no other text, and it moves only on a cut.
 - **Margins:** 58px left and right. Nothing goes past x 58 or x 1022.
 - **Centring:** each scene's art is vertically centred in the field (art spans about y 400 → 1200). A scene is drawn at natural coordinates and shifted with a per-scene **lift** (the `.lift` wrapper's `top`, e.g. -140px), never by moving every object.
 - **Lots of empty page:** about 40–45% of the field stays empty. Don't fill gaps with decoration.
@@ -205,6 +212,7 @@ These are proven patterns from v3. A beat may use one, combine two, or use a new
 | **branch rails** (Paseo) | separate Git worktrees, different branches | A MAIN rail trims on left to right, its commit dots popping as the trim passes; two branch rails fork off into two sealed workspaces. The plates get their real names (issue numbers) on "different branches", a dashed bridge between the branches gets an X tag, then lime changes flow down each branch into its own box and each gets a check. |
 | **detail lens** (Paseo) | check their progress | A trim box draws on a small region of a screenshot (a phone's Working list), then its outline lifts out as a morph frame and opens into a magnified inset beside it (`lensIn`), with a kinetic label. It closes back (`lensOut`) before the next beat. |
 | **stretch tether** (Paseo) | manage them from your phone, even when you're away | Desktop window above, phone below, tied by a live lime tube with pulses. On "away" the phone slides off to the side while the tube re-routes with it, still pulsing (`stretch`), and a dimension line measures the gap with a label (AWAY FROM YOUR DESK). |
+| **implode to a seed** (UncensoredAi) | "But here's the catch" | A turn in the argument. The whole frame shrinks into one lime point at the cut and leaves it there as a seed. The next scene opens on that seed: it pings, and sparks draw the scene's first object out of it (two halves of a silhouette, up both sides), which then assembles inside the outline. Worked example: `kit/examples/uncensored/` (08 → 09). |
 | **tool tour in one window** (Paseo) | editor, terminal, code diffs, pull requests, all in one interface | One wide screen window, a 2×2 plate grid below. Each tool's real screen pushes in on its word (`pushScreens`) and ticks its plate; on the diff and the PR the screen zooms into the named region (the code, the passing checks). On "all in one interface" it eases back out and a trim box draws round each pane of the one app. |
 
 A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s while the grid stays, then the next beat builds. In a match-cut reel the outgoing beat clears with exits instead (`kout`, `wipeOut`, `untrim`, `away`), so the morph frame is the last thing standing.
@@ -277,6 +285,10 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
   - **Detail lens** (`lensIn(box, mf, inset, src, dst, at)` / `lensOut(box, inset, at)`): trim box, then a morph frame from the region to the inset, then the inset swaps in and its image settles from scale 1.12. Draw the inset's magnified image as a CSS background of the same shot (`background: url() -x·k -y·k / W·k H·k`), not a second `<img>` with the same src.
   - **Stretch tether** (`stretch(sels, dA, dB, at, dur)`): a tube and its pulses tween their path `d` from A to B as the thing they are tied to moves. A and B need the same command structure so each number interpolates.
   - **Dimension line:** `draw()` the two half-lines out from the centre, then `pop()` the ticks as the line reaches them.
+- **v5 implode cut (UncensoredAi; the scenes are in `kit/examples/uncensored/`):**
+  - **Out side** (`implode(p, at, pt, lift, cam)` + `over: seed(p)`): the scene's `.lift` (`#p-lift`) scales to 0.015 about the screen point `pt` (converted to lift coordinates through the scene's settled camera) in 0.36s `E.in`, then hides; the seed (a `spark`, lime with a dark edge) pops in at `pt` as the frame vanishes. Start it about 0.42s before the cut, after everything that must be seen has been seen; nothing needs clearing first, because the implode is the clear. The scene returns `fade: false`.
+  - **In side** (`seedIn(p, pt)` + `over: seed(p)`): the seed is at `pt` on frame 0 and pings once. The scene's first lines grow out of it, drawn by sparks (`spark` + `sdraw(head, sel, d, at, dur)`: the trim and a spark head along the same path, same ease, so the dot rides the line's front, then pings where it lands). Put `pt` on the first object's outline (e.g. the front-bottom corner of a silhouette) and keep it in the plan, so both sides read one number.
+  - Use it once or twice a reel, for a real turn (but, the catch, however). It replaces the match cut for that cut; don't carry objects across it.
 - **Sync:** every visual event lands on its word in `transcript.json`. Objects appear just before or on the word that names them, and tags pop on the word that confirms them.
 - **Banned (locked, these break the calm style):** `back.out`, elastic, bounce, overshoot, rotation entrances, shakes, whip pans, glitches, spins and infinite loops.
 - **Seek-safe GSAP only:** use one paused timeline per scene and `fromTo` tweens. Hide initial states with `gsap.set` outside the timeline. A later tween on the same property needs `immediateRender: false`; without it, the later `fromTo` writes its start value at build time and hides the element before its turn. No `Math.random` and no clocks.
@@ -301,7 +313,7 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
 - Use Inter only: small caps labels and plates, no big headings.
 - Use leader lines with orthogonal elbows and unboxed caps labels.
 - Leave generous empty space and keep a top-to-bottom flow.
-- Keep all content inside x 58–1022 and y 305–1305, with captions at y 1420–1540.
+- Keep all content inside x 58–1022 and y 305–1305, with captions at y 1420–1540 (the frame chrome alone sits in y 1320–1360).
 - Make every object appear on its own word, and hold still between moves (no scene-long camera crawl; the outlines must not shimmer in the Studio player).
 - Hold new objects, patterns and motion to the same bar: verify.mjs clean (0 errors, 0 warnings) and side by side with `references/golden/` they read as the same reel.
 

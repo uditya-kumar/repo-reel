@@ -1,6 +1,7 @@
 // repo-reel scene library: every object, helper and the scene shell from the v3 MultiPath reel, plus the v4 motion
-// layer (HarnessRouter reel: custom eases, match-cut handoffs, morph frames, kinetic type, trims, pulses, motion blur)
-// and crafted objects drawn with the Anatomy geometry kit (selector, board; see anat.cjs).
+// layer (HarnessRouter reel: custom eases, match-cut handoffs, morph frames, kinetic type, trims, pulses, motion blur),
+// crafted objects drawn with the Anatomy geometry kit (selector, board; see anat.cjs), and v5 (UncensoredAi reel: the
+// implode-to-a-seed cut and the frame chrome the bg composition draws).
 // Scene files in scripts/scenes/ receive this as `L`. Geometry uses assets/js/iso.js; colours come only from T.
 const fs = require("fs");
 const path = require("path");
@@ -600,7 +601,7 @@ function sceneRaw({ id, p, dur, lift, svg, html = "", anim, over = "", cam, fade
   <div id="root" data-composition-id="${id}" data-start="0" data-duration="${dur}" data-width="1080" data-height="1920">
     <div id="${p}-stage" class="clip stage" data-start="0" data-duration="${dur}" data-track-index="1">
       <div id="${p}-cam" class="cam">
-        <div class="lift" style="top:${lift}px">
+        <div id="${p}-lift" class="lift" style="top:${lift}px">
         <svg id="${p}-art" class="art" viewBox="0 0 1080 1920">${svg}</svg>
         ${html}
         </div>
@@ -818,6 +819,135 @@ const pushScreens = (a, b, vw, at, dur = 0.55) => `
 const zoomIn = (sel, at, s, ox, oy, dur = 0.7, from = 1) =>
   `tl.fromTo("${sel}", { scale: ${from} }, { scale: ${s}, duration: ${dur}, ease: E.cam, transformOrigin: "${ox}px ${oy}px", immediateRender: false }, ${r2(at)});`;
 
+// ---------- v5 (UncensoredAi reel): implode-to-a-seed cut and frame chrome (DESIGN.md 4 "Frame chrome", 7 "Implode") ----------
+// The implode needs a seed (a spark: a lime dot with a ping ring) that the next scene draws its first lines away from,
+// so the spark and its path sampler live here too.
+// Path sampler: points evenly spaced by arc length along an SVG path d (M L H V C Z, absolute or relative). A spark's
+// keyframes come from it, so the head sits exactly on the trim's front at every frame (both use the same ease over
+// the same length).
+function flatPath(d) {
+  const tok = d.match(/[MLHVCZmlhvcz]|-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?/g) || [];
+  let i = 0, cmd = "M", x = 0, y = 0, sx = 0, sy = 0;
+  const pts = [], num = () => +tok[i++];
+  while (i < tok.length) {
+    if (/[a-z]/i.test(tok[i])) cmd = tok[i++];
+    const rel = cmd === cmd.toLowerCase(), K = cmd.toUpperCase(), ox = rel ? x : 0, oy = rel ? y : 0;
+    if (K === "M") { x = num() + ox; y = num() + oy; sx = x; sy = y; pts.push([x, y]); cmd = rel ? "l" : "L"; }
+    else if (K === "L") { x = num() + ox; y = num() + oy; pts.push([x, y]); }
+    else if (K === "H") { x = num() + ox; pts.push([x, y]); }
+    else if (K === "V") { y = num() + oy; pts.push([x, y]); }
+    else if (K === "C") {
+      const a = [num() + ox, num() + oy, num() + ox, num() + oy, num() + ox, num() + oy], p0 = [x, y];
+      for (let k = 1; k <= 40; k++) {
+        const t = k / 40, u = 1 - t;
+        pts.push([0, 1].map((j) => u * u * u * p0[j] + 3 * u * u * t * a[j] + 3 * u * t * t * a[2 + j] + t * t * t * a[4 + j]));
+      }
+      x = a[4]; y = a[5];
+    } else if (K === "Z") { x = sx; y = sy; pts.push([x, y]); }
+    else throw new Error(`flatPath: unsupported command ${cmd} in "${d}"`);
+  }
+  return pts;
+}
+function pathPts(d, n = 28) {
+  const P = flatPath(d), cum = [0];
+  for (let k = 1; k < P.length; k++) cum.push(cum[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]));
+  const L = cum[cum.length - 1], out = [];
+  for (let s = 0, k = 1; s <= n; s++) {
+    const want = (L * s) / n;
+    while (k < P.length - 1 && cum[k] < want) k++;
+    const a = P[k - 1], b = P[k], seg = cum[k] - cum[k - 1] || 1, t = Math.min(1, Math.max(0, (want - cum[k - 1]) / seg));
+    out.push([r1(a[0] + (b[0] - a[0]) * t), r1(a[1] + (b[1] - a[1]) * t)]);
+  }
+  return out;
+}
+// spark: a lime dot with a dark edge (#id-d) and a ping ring (#id-r). It is the implode's seed, and after the cut it
+// rides the front of the trims that grow out of the seed (sdraw), so the first object is drawn by that point.
+// Place it in the same svg as the paths it draws.
+const spark = (id) =>
+  `<g id="${id}" data-layout-allow-overlap><circle id="${id}-r" r="7" fill="none" stroke="${T.ink}" stroke-width="2" opacity="0"/>` +
+  `<circle id="${id}-d" r="7.5" fill="${T.lime}" stroke="${T.on}" stroke-width="2.5" opacity="0"/></g>`;
+// code builders (strings for a scene's anim)
+// the head runs path d from at to at + dur with the same ease as the trim (E.flow by default), then pings and hides
+const sparkRun = (id, d, at, dur = 0.5, o = {}) => {
+  const pts = pathPts(d), kf = {};
+  pts.forEach((p, i) => { kf[r1((i / (pts.length - 1)) * 100) + "%"] = { x: p[0], y: p[1] }; });
+  const end = r2(at + dur);
+  return `
+      gsap.set("#${id}", { x: ${pts[0][0]}, y: ${pts[0][1]} });
+      tl.set("#${id}-d", { opacity: 1 }, ${r2(at)});
+      tl.to("#${id}", { keyframes: { ...${js(kf)}, easeEach: "none" }, ease: ${o.ease || "E.flow"}, duration: ${dur} }, ${r2(at)});
+      tl.set("#${id}-d", { opacity: 0 }, ${end});` + (o.ping === false ? "" : ping(id, end - 0.02));
+};
+// the ring opens round the head's position and fades (one ping, never a loop)
+const ping = (id, at, r = 30) =>
+  `
+      tl.fromTo("#${id}-r", { attr: { r: 7 }, opacity: 0.9 }, { attr: { r: ${r} }, opacity: 0, duration: 0.45, ease: E.out, immediateRender: false }, ${r2(at)});`;
+// draw a trim (a dtube's group, or any selector of pathLength="1" paths) led by a spark along d
+const sdraw = (head, sel, d, at, dur = 0.5, o = {}) => `
+      draw(q("${sel}"), ${r2(at)}, ${dur});` + sparkRun(head, d, at, dur, o);
+
+// implode to a seed: the whole scene (its .lift) shrinks into one screen point and leaves a lime seed there, which
+// the next scene grows its first line from (point -> line -> object). For a turn in the argument ("but here's the
+// catch"). pt = screen point; lift and cam = this scene's lift and its camera state at the implode.
+const seed = (p) => `<svg class="art" viewBox="0 0 1080 1920" data-layout-allow-overlap style="position:absolute;left:0;top:0">${spark(`${p}-sd`)}</svg>`;
+const implode = (p, at, pt, lift, cam, dur = 0.36) => {
+  const { s, x, y } = camOf(cam);
+  const lx = r1(CAM_O[0] + (pt[0] - CAM_O[0] - x) / s), ly = r1(CAM_O[1] + (pt[1] - CAM_O[1] - y) / s - lift);
+  return `
+      tl.fromTo("#${p}-lift", { scale: 1 }, { scale: 0.015, duration: ${dur}, ease: E.in, transformOrigin: "${lx}px ${ly}px" }, ${r2(at)});
+      tl.set("#${p}-lift", { opacity: 0 }, ${r2(at + dur)});
+      gsap.set("#${p}-sd", { x: ${pt[0]}, y: ${pt[1]} });
+      tl.fromTo("#${p}-sd-d", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.14, ease: E.out, transformOrigin: "50% 50%", immediateRender: false }, ${r2(at + dur - 0.12)});`;
+};
+// the receiving side: the seed sits at pt on frame 0 and pings, then (in the scene) its sparks draw away from it
+const seedIn = (p, pt) => `
+      gsap.set("#${p}-sd", { x: ${pt[0]}, y: ${pt[1]} });
+      tl.set("#${p}-sd-d", { opacity: 1 }, 0); tl.set("#${p}-sd-d", { opacity: 0 }, 0.14);` + ping(`${p}-sd`, 0.02, 40);
+
+// odometer digits: each digit is a masked column 0-9 0-9 that rolls (E.inOut) to its next value, so a number changes
+// by rolling, not by a swap. Tabular figures, any font size; lh = line height in px.
+const odo = (id, value, lh) => String(value).split("").map((c, i) => /\d/.test(c)
+  ? `<span class="km" style="height:${lh}px;line-height:${lh}px"><span id="${id}-d${i}" style="display:block">${Array.from({ length: 20 }, (_, k) => `<span style="display:block;height:${lh}px">${k % 10}</span>`).join("")}</span></span>`
+  : `<span>${c}</span>`).join("");
+// roll digits from value a to b (same length); each digit moves forward (9 -> 0 passes through 10)
+const roll = (id, a, b, lh, at, dur = 0.5, first = false) => {
+  const A = String(a), B = String(b);
+  return B.split("").map((c, i) => {
+    const da = +A[i], db = +c;
+    if (!/\d/.test(c) || da === db) return "";
+    const to = db < da ? db + 10 : db;
+    return `
+      tl.fromTo("#${id}-d${i}", { y: ${-da * lh} }, { y: ${-to * lh}, duration: ${dur}, ease: E.inOut${first ? "" : ", immediateRender: false"} }, ${r2(at)});` +
+      (to >= 10 ? `
+      tl.set("#${id}-d${i}", { y: ${-db * lh} }, ${r2(at + dur)});` : "");
+  }).join("");
+};
+
+// frame chrome (bg composition): registration marks just outside the grid field's corners and a figure readout under
+// it ("FIG. 03 / 12", the number rolling at every cut, with one segment per scene that fills as the reel advances),
+// like the margins of a technical manual's page. No accent; it never moves except on a cut.
+function chrome(scenes, total) {
+  const n = scenes.length, pad = (k) => String(k).padStart(2, "0"), LH = 30, a = 22, o = 12;
+  const marks = [[58 - o, 305 - o, 1, 1], [1022 + o, 305 - o, -1, 1], [1022 + o, 1305 + o, -1, -1], [58 - o, 1305 + o, 1, -1]]
+    .map(([x, y, sx, sy]) => `<path d="M${x} ${y + sy * a} V${y} H${x + sx * a}" fill="none" stroke="${T.dark}" stroke-width="2"/>`).join("");
+  const SW = 26, SG = 6, sx0 = 1022 - (n * SW + (n - 1) * SG);
+  const segs = scenes.map((_, i) => `<div style="position:absolute;left:${sx0 + i * (SW + SG)}px;top:1342px;width:${SW}px;height:5px;background:${T.rule}">` +
+    `<div id="bg-sg${i}" style="position:absolute;inset:0;background:${T.ink};transform-origin:0% 50%;transform:scaleX(0)"></div></div>`).join("");
+  const html = `<svg id="bg-marks" viewBox="0 0 1080 1920" style="position:absolute;left:0;top:0;width:1080px;height:1920px">${marks}</svg>` +
+    `<div id="bg-fig" style="position:absolute;left:58px;top:${1344 - LH / 2 - 2}px;height:${LH}px;display:flex;align-items:center;gap:0;font-family:Inter;font-size:24px;font-weight:500;letter-spacing:0.12em;line-height:${LH}px;color:${T.ink};font-variant-numeric:tabular-nums;white-space:pre">` +
+    `<span>FIG. </span>${odo("bg-fn", pad(1), LH)}<span> / ${pad(n)}</span></div>` + segs;
+  let anim = `
+      tl.fromTo("#bg-sg0", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: E.out }, 0.05);`;
+  scenes.forEach((sc, i) => {
+    if (!i) return;
+    anim += roll("bg-fn", pad(i), pad(i + 1), LH, sc.start, 0.5, i === 1) + `
+      tl.fromTo("#bg-sg${i}", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: E.out }, ${r2(sc.start + 0.05)});`;
+  });
+  // the first roll per digit renders its from-state at build; later digits are set to their resting value up front
+  return { html, anim, total };
+}
+
+
 module.exports = {
   fs, path, T, C, S, make, tube, arrow, leader, check,
   r1, txt, label, lead, dtube, barrow, cube, bez, bpath, samples, nsv,
@@ -829,4 +959,5 @@ module.exports = {
   anat, selector, board,
   CSS, HELPERS, scene, sceneRaw, limeEdges, keyOf, makeCues, ctaScene, todoScene,
   screenWin, fitShot, shotBox, agentWin, rails, dimLine, stretch, lensIn, lensOut, converge, pushScreens, zoomIn,
+  flatPath, pathPts, spark, sparkRun, ping, sdraw, seed, implode, seedIn, odo, roll, chrome,
 };
