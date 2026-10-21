@@ -13,7 +13,7 @@ module.exports = (L, s, reel) => {
   const LOGO = [440, 760, 200, 200], REPO = [58, 370, 964, RH + 5];
   const y0 = P.R.ctaN1[1];
   if (P.R.ctaN1.join() !== [290, y0, 500, 68].join()) throw new Error(`cta: plan's ctaN1 ${P.R.ctaN1} is not a 500-wide plate at x 290`);
-  const kw = (w) => `<span class="km"><span class="kw">${w}</span></span>`;
+  const kw = L.kword;   // a masked word (kin / kout move it)
   const htmlA =
     cfg.trust.map((it, i) => plate(`${p}-n${i + 1}`, 290, y0 + i * 90, 500, it.text, it.kind)).join("") +
     shotBox(`${p}-logo`, ...LOGO, "assets/logos/paseo-logo-ink.svg", { pad: 0.2 }) +

@@ -1,6 +1,7 @@
 // Step 7a. Dark v3 captions from the aligned script words.
 // Usage: node captions.mjs <projectDir>
-// Groups break at , . ? ! or a pause > captions.pause, then split to <= maxWords words / maxChars characters.
+// Groups break at , . ? ! or a pause > captions.pause, then split into the fewest groups that fit maxWords words and
+// maxChars characters, balanced by width. script/reel.json -> "captions" overrides config.json for one reel.
 // Each group shows from its first word to min(next group, last word end + hold); the active word turns lime.
 // Writes compositions/captions.html.
 import fs from "node:fs";
@@ -10,7 +11,9 @@ import { CFG, projectDir, need, rd, ok } from "./_common.mjs";
 const dir = projectDir(process.argv[2]);
 const words = rd(need(path.join(dir, "assets/audio/words.json"), "run align.mjs first"));
 const { total: TOTAL } = rd(need(path.join(dir, "script/timing.json"), "run timing.mjs first"));
-const C = CFG.captions;
+// per-project overrides: script/reel.json -> "captions": { maxWords, maxChars, pause, hold } (same keys as config.json)
+const REEL = path.join(dir, "script/reel.json");
+const C = { ...CFG.captions, ...((fs.existsSync(REEL) && rd(REEL).captions) || {}) };
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const f3 = (n) => n.toFixed(3);
 
@@ -21,13 +24,32 @@ words.forEach((w, k) => {
   const nxt = words[k + 1];
   if (/[,.?!]$/.test(w.text) || !nxt || nxt.start - w.end > C.pause) { phrases.push(cur); cur = []; }
 });
-const groups = [];
-for (const ph of phrases) {
-  const chars = ph.reduce((a, x) => a + x.text.length + 1, 0);
-  const n = Math.max(Math.ceil(ph.length / C.maxWords), Math.ceil(chars / C.maxChars));
-  const size = Math.ceil(ph.length / n);
-  for (let j = 0; j < ph.length; j += size) groups.push(ph.slice(j, j + size));
+// split a phrase into the fewest groups that each fit maxWords and maxChars, balanced so the widest group is as narrow
+// as possible (an even split by word count let long words build a 34-character group that ran off the frame)
+const width = (g) => g.reduce((a, x) => a + x.text.length, 0) + g.length - 1;
+function partition(ph, n) {
+  // best[k][i] = narrowest possible widest group when the first i words make k groups
+  const best = Array.from({ length: n + 1 }, () => Array(ph.length + 1).fill(Infinity)), cut = best.map((r) => r.map(() => 0));
+  best[0][0] = 0;
+  for (let k = 1; k <= n; k++)
+    for (let i = 1; i <= ph.length; i++)
+      for (let j = Math.max(0, i - C.maxWords); j < i; j++) {
+        const v = Math.max(best[k - 1][j], width(ph.slice(j, i)));
+        if (v < best[k][i]) { best[k][i] = v; cut[k][i] = j; }
+      }
+  if (!Number.isFinite(best[n][ph.length])) return null;
+  const out = [];
+  for (let k = n, i = ph.length; k > 0; i = cut[k][i], k--) out.unshift(ph.slice(cut[k][i], i));
+  return { groups: out, widest: best[n][ph.length] };
 }
+function split(ph) {
+  for (let n = Math.ceil(ph.length / C.maxWords); n <= ph.length; n++) {
+    const p = partition(ph, n);
+    if (p && p.widest <= C.maxChars) return p.groups;
+  }
+  return ph.map((w) => [w]);   // a single word wider than maxChars: one word per group (flagged below)
+}
+const groups = phrases.flatMap(split);
 
 const html = [], js = [];
 groups.forEach((g, gi) => {
@@ -78,5 +100,6 @@ ${js.join("\n")}
 fs.mkdirSync(path.join(dir, "compositions"), { recursive: true });
 fs.writeFileSync(path.join(dir, "compositions/captions.html"), doc);
 ok(`captions.html: ${groups.length} groups`);
-const long = groups.filter((g) => g.reduce((a, x) => a + x.text.length + 1, 0) - 1 > C.maxChars + 4);
-if (long.length) console.log(`⚠ wide groups (check they fit 940 px): ${long.map((g) => g.map((w) => w.text).join(" ")).join(" | ")}`);
+const long = groups.filter((g) => width(g) > C.maxChars);
+if (long.length) console.log(`⚠ single words wider than ${C.maxChars} characters (check they fit 940 px): ${long.map((g) => g.map((w) => w.text).join(" ")).join(" | ")}`);
+console.log(`  widest group: ${Math.max(...groups.map(width))} characters (max ${C.maxChars}, ${C.maxWords} words)`);

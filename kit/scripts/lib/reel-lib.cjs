@@ -12,21 +12,26 @@ const { T, C, S, make, tube, arrow, leader, check } = window.ISO;
 const r1 = (n) => Math.round(n * 10) / 10;
 const txt = (x, y, s, o = {}) =>
   `<text x="${x}" y="${y}" font-family="Inter" font-size="${o.size || 30}" font-weight="${o.w || 400}" fill="${o.fill || T.ink}" text-anchor="${o.a || "start"}" letter-spacing="${o.ls == null ? "0.04em" : o.ls}">${s}</text>`;
+// ids: #id (svg g) · starts: visible (static text; use klabel to animate)
 const label = (id, x, y, lines, o = {}) =>
   `<g id="${id}">${lines.map((l, i) => txt(x, y + i * 36, l, o)).join("")}</g>`;
 // leader drawn on with dashoffset; arrowhead pops at the end
+// ids: #id-l (line), #id-h (arrowhead) · starts: drawn; lead(id, at) brings it on from hidden, unlead(id, at) takes it off
 const lead = (id, pts) => {
   const [a, b] = pts.slice(-2), ang = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
   return `<polyline id="${id}-l" class="dr" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0" points="${pts.map((p) => p.join(",")).join(" ")}" fill="none" stroke="${T.ink}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` +
     `<g transform="translate(${b[0]} ${b[1]}) rotate(${r1(ang)})"><polygon id="${id}-h" points="0,0 -13,-6 -13,6" fill="${T.ink}"/></g>`;
 };
 // a tube whose two strokes draw on together
+// ids: #id (g) holding two pathLength=1 paths · starts: drawn; draw(q("#id path"), at) brings it on from hidden, untrim(q("#id path"), at) retracts it
 const dtube = (id, d, o) =>
   `<g id="${id}">` + tube(d, o).replace(/<path /g, `<path class="dr" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0" `) + `</g>`;
 // block arrow wrapped so it can wipe in from its tail
+// ids: #id (g) · starts: visible; wipe("#id", at) / unwipe
 const barrow = (id, x, y, len, ang, fill, o) =>
   `<g transform="translate(${x} ${y}) rotate(${ang})"><g id="${id}">${arrow(0, 0, len, 0, fill, o)}</g></g>`;
 // lime packet cube centred on (0,0); moved with x/y keyframes
+// ids: #id · starts: hidden (opacity 0); flow() shows and moves it
 const cube = (id, s = 22) =>
   `<g id="${id}" opacity="0"><g transform="translate(0 ${s / 2})">${make(0, 0).box(-s / 2, -s / 2, 0, s, s, s, { top: T.lime, left: T.limeL, right: T.limeR, sw: 2 })}</g></g>`;
 const bez = (p, t) => {
@@ -38,6 +43,7 @@ const samples = (p, a = 0, b = 1, n = 16) => Array.from({ length: n + 1 }, (_, i
 const nsv = `vector-effect="non-scaling-stroke"`;
 
 // ---------- objects ----------
+// ids: #id (g) · starts: visible; move it as one group (slide, dropIn, away)
 function router(id, ox, oy, s = 1) {
   const m = make(ox, oy), w = 170 * s, d = 100 * s, h = 44 * s;
   let g = m.box(0, 0, 0, w, d, h, { top: T.g100, left: T.g300, right: T.g500 });
@@ -55,6 +61,7 @@ function router(id, ox, oy, s = 1) {
   g += ant(22 * s, 14 * s) + ant(148 * s, 14 * s);
   return `<g id="${id}">${g}</g>`;
 }
+// ids: #id-a0..2 (the arcs) · starts: visible
 function wifiArcs(id, cx, cy) {
   const arcs = [16, 32, 48].map((r, i) => {
     const k = r * Math.SQRT1_2;
@@ -62,6 +69,7 @@ function wifiArcs(id, cx, cy) {
   }).join("");
   return `<g id="${id}">${arcs}<circle cx="${cx}" cy="${cy}" r="5" fill="${T.ink}"/></g>`;
 }
+// ids: #id (g), signal bars #id-b0..3 · starts: visible
 function phone(id, ox, oy, s = 1) {
   const m = make(ox, oy), w = 120 * s, d = 16 * s, h = 210 * s;
   let g = m.box(0, 0, 0, w, d, h, { top: T.g300, left: T.g100, right: T.g500 });
@@ -75,15 +83,18 @@ function phone(id, ox, oy, s = 1) {
 }
 // default screen glyph (v3): two paths merging into one. Pass your own `glyph(id)` for another tool:
 // screen inner area is x 12..288, y 12..178; give the drawable stroke id `${id}-gl` + pathLength="1" so draw() works.
+// ids: #id-gl (the drawable stroke) · starts: drawn; draw("#id-gl", at)
 const mergeGlyph = (id) =>
   `<path id="${id}-gl" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0" d="M70 62 C120 62 120 95 160 95 M70 128 C120 128 120 95 160 95 L232 95" fill="none" stroke="${T.lime}" stroke-width="9" stroke-linecap="round"/>` +
   [[70, 62], [70, 128], [232, 95]].map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="9" fill="${T.hi}" stroke="${T.ink}" stroke-width="2" ${nsv}/>`).join("");
 // one input splitting to three outputs (a router / gateway: one API -> many backends)
+// ids: #id-gl (the drawable stroke) · starts: drawn; draw("#id-gl", at)
 const fanGlyph = (id) =>
   `<path id="${id}-gl" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0" d="M70 95 L128 95 C172 95 180 52 232 52 M128 95 L232 95 M128 95 C172 95 180 138 232 138" fill="none" stroke="${T.lime}" stroke-width="9" stroke-linecap="round"/>` +
   [[70, 95], [232, 52], [232, 95], [232, 138]].map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="9" fill="${T.hi}" stroke="${T.ink}" stroke-width="2" ${nsv}/>`).join("");
 // named glyphs so reel.json can pick one: "cta": { "glyph": "fan" }
 const GLYPHS = { merge: mergeGlyph, fan: fanGlyph };
+// ids: #id (g), screen glyph #id-gl (+ whatever ids your glyph(id) adds) · starts: visible, glyph drawn; draw("#id-gl", at) traces it
 function laptop(id, ox, oy, glyph = mergeGlyph) {
   if (typeof glyph === "string") glyph = GLYPHS[glyph] || mergeGlyph;
   const m = make(ox, oy), W = 300, D = 200, B = 16, L = 190, t = 10;
@@ -102,6 +113,7 @@ function laptop(id, ox, oy, glyph = mergeGlyph) {
   return `<g id="${id}">${g}</g>`;
 }
 // chip board / "engine" block; `mark` is the 2-3 letter chip text (v3: "MP")
+// ids: #id (g) · starts: visible
 function adapter(id, ox, oy, mark = "MP") {
   const m = make(ox, oy), W = 240, D = 160, H = 22;
   let g = m.box(0, 0, 0, W, D, H, { top: T.g100, left: T.g300, right: T.g500 });
@@ -117,6 +129,7 @@ function adapter(id, ox, oy, mark = "MP") {
   return `<g id="${id}">${g}</g>`;
 }
 // flat frontal app window (HTML)
+// ids: #id (.win) · starts: visible; wipeIn("#id", at). Use appWinC when the contents must leave before a cut
 const appWin = (id, x, y, w, h, title, inner) =>
   `<div id="${id}" class="win" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">` +
   `<div class="win-bar"><i></i><i></i><i></i><span>${title}</span></div>${inner}</div>`;
@@ -129,13 +142,16 @@ const tagInner = (kind) => {
 };
 // kind "none" = a name plate with no tag (e.g. an agent or service name)
 // the text sits in a mask (.pt > .pw) so plateIn() can rise it in; it looks the same at rest
+// ids: #id (.plate), #id-tag (svg), the name is #id .pw · starts: visible; plateIn("#id", at) and pop("#id-tag", at) keep them hidden until their times
 const plate = (id, x, y, w, text, kind) =>
   `<div id="${id}" class="plate" style="left:${x}px;top:${y}px;width:${w}px"><span class="pt"><span class="pw">${text}</span></span>` +
   (kind === "none" ? "" : `<svg id="${id}-tag" class="tag" width="58" height="40" viewBox="0 0 58 40">${tagInner(kind)}</svg>`) + `</div>`;
 // svg tag centred on (cx, cy)
+// ids: #id (g) · starts: visible; pop("#id", at)
 const stag = (id, cx, cy, kind) => `<g transform="translate(${cx - 29} ${cy - 20})"><g id="${id}">${tagInner(kind)}</g></g>`;
 
 // ---------- more objects (v3 scenes 4-8) ----------
+// ids: #id (g) · starts: visible
 function ethBox(id, ox, oy, s = 1) {
   const m = make(ox, oy), w = 160 * s, d = 90 * s, h = 52 * s;
   let g = m.box(0, 0, 0, w, d, h, { top: T.g100, left: T.g300, right: T.g500 });
@@ -150,6 +166,7 @@ function ethBox(id, ox, oy, s = 1) {
   return `<g id="${id}">${g}</g>`;
 }
 // flat frontal stopwatch; a lime pie (thick dashed stroke) sweeps clockwise under the hand
+// ids: #id, lime pie #id-pie (pathLength 1, starts full), hand #id-hand · starts: visible
 function stopwatch(id, cx, cy, r) {
   const pr = r * 0.42;
   let g = `<rect x="${cx - 14}" y="${cy - r - 22}" width="28" height="16" fill="${T.g300}" stroke="${T.ink}" stroke-width="2.5"/>` +
@@ -167,6 +184,7 @@ function stopwatch(id, cx, cy, r) {
   return `<g id="${id}">${g}</g>`;
 }
 // spec-sheet gauge: n of 10 cells lime (spare speed), the rest light grey
+// ids: #id, cells #id-c0..9 · starts: visible (n cells lime)
 const gauge = (id, x, y, n) =>
   `<g id="${id}">` + Array.from({ length: 10 }, (_, i) =>
     `<rect id="${id}-c${i}" x="${x + i * 26}" y="${y}" width="22" height="30" fill="${i < n ? T.lime : T.g100}" stroke="${T.ink}" stroke-width="2"/>`).join("") + `</g>`;
@@ -184,6 +202,7 @@ const ICONS = {
   more: `<circle cx="20" cy="34" r="5" fill="${T.ink}"/><circle cx="34" cy="34" r="5" fill="${T.ink}"/><circle cx="48" cy="34" r="5" fill="${T.ink}"/>`,
 };
 // isolated workspace: a closed container box with a lid seam, a folder mark on top and a lime status LED
+// ids: #id (g) · starts: visible
 function workspace(id, ox, oy, s = 1) {
   const m = make(ox, oy), w = 150 * s, d = 150 * s, h = 90 * s;
   let g = m.box(0, 0, 0, w, d, h, { top: T.g100, left: T.g300, right: T.g500 });
@@ -194,9 +213,11 @@ function workspace(id, ox, oy, s = 1) {
   g += `<g transform="${m.topFace(0, 0, h, w, d)}"><path d="M${r1(35 * s)} ${r1(45 * s)} h${r1(30 * s)} l${r1(8 * s)} ${r1(10 * s)} h${r1(42 * s)} v${r1(50 * s)} h${r1(-80 * s)} z" fill="${T.g300}" stroke="${T.ink}" stroke-width="1.75" stroke-linejoin="round" ${nsv}/></g>`;
   return `<g id="${id}">${g}</g>`;
 }
+// ids: none (wrap it in your own element to move it) · starts: visible
 const icoTile = (k) =>
   `<svg class="ico" width="68" height="68" viewBox="0 0 68 68"><rect x="1.25" y="1.25" width="65.5" height="65.5" fill="${T.hi}" stroke="${T.ink}" stroke-width="2.5"/>${ICONS[k]}</svg>`;
 const POINTER = `<path d="M3 3 L3 50 L15 39 L24 58 L33 54 L24 35 L41 35 Z" fill="${T.ink}" stroke="${T.on}" stroke-width="2.5" stroke-linejoin="round"/>`;
+// ids: none (a .win-ph placeholder block; lt = the light tone) · starts: visible
 const ph = (x, y, w, h, lt) => `<div class="win-ph${lt ? " lt" : ""}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>`;
 const js = (o) => JSON.stringify(o);
 
@@ -212,6 +233,7 @@ Object.assign(ICONS, {
 // kind "video" (play mark + lime subtitle bar `${id}-sub`), "voice" (waveform bars `${id}-w0..14`, centre ones lime),
 // "image" (mountains + lime sun `${id}-sun`). Spans x ox-14..ox+173, y oy-130..oy+108.
 const WAVE = [16, 28, 20, 40, 30, 52, 38, 62, 44, 56, 34, 46, 24, 32, 18];
+// ids: #id, #id-sub (video), #id-w0..14 (voice), #id-sun (image) · starts: visible
 function mediaCard(id, ox, oy, kind = "video") {
   const m = make(ox, oy), w = 200, d = 16, h = 130;
   let g = m.box(0, 0, 0, w, d, h, { top: T.g300, left: T.g100, right: T.g500 });
@@ -230,6 +252,7 @@ function mediaCard(id, ox, oy, kind = "video") {
 }
 // version layer: a thin iso sheet at height z with its name ("V1") on the top face. Stack several at rising z
 // for a version history; move whole layers (y) to explode the stack. W 300 x D 200: x ox-173..ox+260, y oy-z-16..oy+250-z.
+// ids: #id (g) · starts: visible
 function layer(id, ox, oy, z, text, o = {}) {
   const m = make(ox, oy), W = o.w || 300, D = o.d || 200, H = 16;
   let g = m.box(0, 0, z, W, D, H, { top: T.g100, left: T.g300, right: T.g500 });
@@ -240,6 +263,7 @@ function layer(id, ox, oy, z, text, o = {}) {
 }
 // settings slider (HTML, inside a window): track + lime fill + knob, resting at b (0..1) of width w.
 // sliderAnim moves it from a to b: the knob glides and the fill grows with it.
+// ids: fill #id-f, knob #id-k · starts: visible, resting at b; sliderAnim moves it
 const slider = (id, x, y, w, b) =>
   `<div style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:14px;background:${T.g300};border:2px solid ${T.ink}">` +
   `<div id="${id}-f" style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(b * w)}px;background:${T.lime};border-right:2px solid ${T.on};transform-origin:0% 50%"></div>` +
@@ -248,6 +272,7 @@ const sliderAnim = (id, w, a, b, at, dur = 0.5) =>
   `tl.fromTo("#${id}-k", { x: ${Math.round((a - b) * w)} }, { x: 0, duration: ${dur}, ease: "power2.inOut" }, ${at});` +
   `tl.fromTo("#${id}-f", { scaleX: ${r1((a / b) * 100) / 100} }, { scaleX: 1, duration: ${dur}, ease: "power2.inOut" }, ${at});`;
 // highlight box over a screenshot region (lime outline with dark edges on both sides); pop it on the word that names the region
+// ids: #id · starts: visible; pop("#id", at)
 const hlBox = (id, x, y, w, h) =>
   `<div id="${id}" data-layout-allow-overlap style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border:2px solid ${T.on};box-sizing:border-box">` +
   `<div style="position:absolute;inset:0;border:4px solid ${T.lime}"><div style="position:absolute;inset:0;border:1.5px solid ${T.on}"></div></div></div>`;
@@ -349,11 +374,13 @@ function morphCode(id, h, side, at, show) {
 // Five transform-only parts (fill + four 2.5px edges), each motion-blurred on its own, so the smear follows size changes too.
 // Lives in the stage's screen layer (`over`) for cross-cut handoffs, or inside .lift for a morph within one scene.
 const MB = (n = 12) => `data-hf-motion-blur='{"shutterAngle":360,"shutterPhase":-180,"samplesPerFrame":${n}}'`;
+// ids: #id, parts #id-f/-t/-b/-l/-r · starts: zero size (invisible); mfSet / morph / morphCode place and move it
 const mframe = (id) =>
   `<div id="${id}" class="mf" data-layout-allow-overlap>` +
   [["f", "mf-f"], ["t", "mf-h"], ["b", "mf-h"], ["l", "mf-v"], ["r", "mf-v"]]
     .map(([k, c]) => `<i id="${id}-${k}" class="${c}" ${MB()} data-layout-allow-overlap></i>`).join("") + `</div>`;
 // a window's outline drawn as a trim path: two halves start at the top-left corner and meet bottom-right
+// ids: #id (g) with two paths · starts: hidden (dashoffset 1); draw(q("#id path"), at)
 const trimRect = (id, x, y, w, h) => {
   const a = x + 1.25, b = y + 1.25, c = x + w - 1.25, d = y + h - 1.25;
   const p = (dd) => `<path pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="${dd}" fill="none" stroke="${T.ink}" stroke-width="2.5" stroke-linecap="square"/>`;
@@ -361,10 +388,12 @@ const trimRect = (id, x, y, w, h) => {
 };
 // app window whose chrome + contents sit in one layer (#id-c), so the contents can wipe out and leave the bare outline
 // (the outline is what a morph frame picks up at a match cut). o.attr: extra attributes on the window (e.g. MB()).
+// ids: #id (.win), #id-c (chrome + contents layer) · starts: visible; wipeIn("#id-c", at) / wipeOut("#id-c", at) leaves the bare outline
 const appWinC = (id, x, y, w, h, title, inner, o = {}) =>
   `<div id="${id}" class="win" ${o.attr || ""} style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div id="${id}-c" class="wc">` +
   `<div class="win-bar"><i></i><i></i><i></i><span>${title}</span></div>${inner}</div></div>`;
 // highlight box drawn as a trim path (lime 4px with dark edges) around a screenshot region; HTML, place it inside the window
+// ids: #id (svg), paths #id-u (dark edge) and #id-o (lime) · starts: hidden; draw(q("#id path"), at) / untrim(q("#id path"), at)
 const hlTrim = (id, x, y, w, h) => {
   const P = 6, d = `M${P} ${P} H${w + P} V${h + P} H${P} Z`;
   const p = (k, c, sw) => `<path id="${id}-${k}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="${d}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linejoin="miter" stroke-linecap="square"/>`;
@@ -372,23 +401,29 @@ const hlTrim = (id, x, y, w, h) => {
 };
 // data pulse: a short segment running inside a tube's core. Neutral pulses are one `dark` stroke;
 // lime pulses get a dark edge (on 10 under lime 6) like every lime shape. len = fraction of the path.
+// ids: #id (g, data-len) · starts: hidden; run("#id", at, dur, reps, gap)
 const pulse = (id, d, o = {}) => {
   const len = o.len || 0.14, lime = !!o.lime;
   const p = (c, sw) => `<path pathLength="1" stroke-dasharray="${len} 2" stroke-dashoffset="${len}" d="${d}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="butt"/>`;
   return `<g id="${id}" data-len="${len}">${lime ? p(T.on, 10) + p(T.lime, 6) : p(T.dark, o.w || 6)}</g>`;
 };
+// one masked word (the unit kin / kout move); the mask is meant to clip, so the layout audit is told so
+// ids: none (.km mask > .kw word) · starts: visible
+const kword = (w) => `<span class="km" data-layout-allow-overflow><span class="kw">${w}</span></span>`;
 // kinetic label: same type as label() (Inter 400 30px caps, 0.04em, 36px leading), each word in a mask so kin() can rise it.
 // (x, y) is the first baseline, like txt(). a: "start" | "middle" | "end".
+// ids: #id, words .kw inside · starts: visible; kin("#id", at) keeps the words hidden until they rise, kout / L.kspan take them off
 const klabel = (id, x, y, lines, o = {}) => {
   const a = o.a || "start";
   const pos = a === "end" ? `right:${1080 - x}px;text-align:right` : a === "middle" ? `left:${x - 300}px;width:600px;text-align:center` : `left:${x}px`;
   return `<div id="${id}" class="klab" style="top:${y - 29}px;${pos}">` +
-    lines.map((l) => `<div>${l.split(" ").map((w) => `<span class="km"><span class="kw">${w}</span></span>`).join(" ")}</div>`).join("") + `</div>`;
+    lines.map((l) => `<div>${l.split(" ").map(kword).join(" ")}</div>`).join("") + `</div>`;
 };
 // typed value: characters rise in one by one inside a mask (no caret needed); type() / untype() drive it.
 // "--" stays one unit: split apart, the two inline-block hyphens lose their kerning and read as "- -"
+// ids: #id, characters .kw inside · starts: visible; type("#id", at, cps) keeps them hidden until they type in
 const typed = (id, text) =>
-  `<span id="${id}" class="km">${(text.match(/--|[\s\S]/g) || []).map((c) => `<span class="kw">${c}</span>`).join("")}</span>`;
+  `<span id="${id}" class="km" data-layout-allow-overflow>${(text.match(/--|[\s\S]/g) || []).map((c) => `<span class="kw">${c}</span>`).join("")}</span>`;
 // music beat grid: beats(bpm, phase) -> snap(t) = the nearest beat to t (global seconds); pass several grids
 // as [[from, bpm, phase], ...] when the bed restarts mid-reel
 const beatGrid = (grids) => (t) => {
@@ -469,28 +504,28 @@ const CSS = `
     #root { position: absolute; inset: 0; overflow: hidden; color: ${T.ink}; font-family: "Inter", sans-serif; }
     .stage, .cam { position: absolute; inset: 0; }
     .cam { transform-origin: 50% 45%; }
-    .lift { position: absolute; left: 0; width: 1080px; height: 1920px; }
-    .art { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; overflow: visible; }
-    .win { position: absolute; background: ${T.hi}; border: 2.5px solid ${T.ink}; overflow: hidden; }
-    .win-bar { position: relative; height: 46px; background: ${T.hi}; border-bottom: 2.5px solid ${T.ink}; display: flex; align-items: center; padding-left: 14px; gap: 8px; }
+    .lift { position: absolute; left: 0; width: 1080px; height: 1920px; } /* the scene's art layer; its top = the scene's lift */
+    .art { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; overflow: visible; } /* the full-frame svg inside .lift (the scene's svg string) */
+    .win { position: absolute; background: ${T.hi}; border: 2.5px solid ${T.ink}; overflow: hidden; } /* window or screenshot frame: hi fill, 2.5px ink edge; border-box, so it holds (w - 5) x (h - 5) */
+    .win-bar { position: relative; height: 46px; background: ${T.hi}; border-bottom: 2.5px solid ${T.ink}; display: flex; align-items: center; padding-left: 14px; gap: 8px; } /* a drawn window's 46px title bar (drawn windows only, never over a screenshot) */
     .win-bar i { width: 12px; height: 12px; border-radius: 50%; border: 1.75px solid ${T.ink}; background: ${T.hi}; }
     .win-bar span { position: absolute; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 500; }
-    .win-ph { position: absolute; background: ${T.g300}; border: 1.75px solid ${T.ink}; }
-    .win-ph.lt { background: ${T.g100}; }
-    .plate { position: absolute; height: 68px; background: ${T.hi}; border: 2.5px solid ${T.ink}; display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 22px; font-size: 30px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+    .win-ph { position: absolute; background: ${T.g300}; border: 1.75px solid ${T.ink}; } /* placeholder block in a drawn window (g300) */
+    .win-ph.lt { background: ${T.g100}; } /* the light placeholder tone (g100) */
+    .plate { position: absolute; height: 68px; background: ${T.hi}; border: 2.5px solid ${T.ink}; display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 22px; font-size: 30px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; } /* label plate, 68px tall; plate() builds it */
     .tag { display: block; }
-    .row { position: absolute; width: 700px; height: 68px; }
-    .ico { position: absolute; left: 0; top: 0; width: 68px; height: 68px; }
-    .pbar { position: absolute; background: ${T.hi}; border: 2.5px solid ${T.ink}; overflow: hidden; }
-    .pfill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: ${T.lime}; border-right: 2.5px solid ${T.on}; transform-origin: 0% 50%; }
-    .code { position: absolute; font-size: 24px; font-weight: 500; white-space: pre; font-variant-numeric: tabular-nums; }
-    .rate { position: absolute; font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .row { position: absolute; width: 700px; height: 68px; } /* a 700 x 68 checklist row (icon tile + plate) */
+    .ico { position: absolute; left: 0; top: 0; width: 68px; height: 68px; } /* 68px icon tile slot */
+    .pbar { position: absolute; background: ${T.hi}; border: 2.5px solid ${T.ink}; overflow: hidden; } /* progress bar track */
+    .pfill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: ${T.lime}; border-right: 2.5px solid ${T.on}; transform-origin: 0% 50%; } /* lime progress fill (tween scaleX) */
+    .code { position: absolute; font-size: 24px; font-weight: 500; white-space: pre; font-variant-numeric: tabular-nums; } /* code / terminal / field text: Inter 500 24px, pre, tabular (set font-size inline to change) */
+    .rate { position: absolute; font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; } /* data readout: Inter 600 30px, tabular */
     .tagbox { position: relative; width: 58px; height: 40px; }
     .tagbox svg { position: absolute; left: 0; top: 0; }
-    .cursor { position: absolute; left: 0; top: 0; }
-    .ctr { position: absolute; left: 0; width: 1080px; display: flex; justify-content: center; }
-    .url { background: ${T.hi}; border: 2.5px solid ${T.ink}; padding: 12px 26px 14px; font-size: 34px; font-weight: 500; letter-spacing: 0.01em; }
-    .ftxt { font-size: 56px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
+    .cursor { position: absolute; left: 0; top: 0; } /* the pointer svg (POINTER) */
+    .ctr { position: absolute; left: 0; width: 1080px; display: flex; justify-content: center; } /* full-width row that centres its child (CTA url, follow line) */
+    .url { background: ${T.hi}; border: 2.5px solid ${T.ink}; padding: 12px 26px 14px; font-size: 34px; font-weight: 500; letter-spacing: 0.01em; } /* the CTA url plate */
+    .ftxt { font-size: 56px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; } /* the CTA follow line, Inter 600 56px */
     .hl { position: relative; white-space: nowrap; }
     .hl i { position: absolute; left: -6px; right: -6px; bottom: 2px; height: 20px; background: ${T.lime}; border: 2.5px solid ${T.on}; transform-origin: 0% 50%; }
     .hl b { position: relative; font-weight: inherit; }
@@ -498,20 +533,20 @@ const CSS = `
     .bst { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 18px; border: 2.5px solid ${T.ink}; font-size: 36px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
     .bst.on { background: ${T.ink}; color: ${T.hi}; }
     .bst.off { background: ${T.hi}; color: ${T.ink}; opacity: 0; }
-    .over { position: absolute; inset: 0; }
+    .over { position: absolute; inset: 0; } /* the stage's screen layer above the camera (a scene's over html) */
     .mf { position: absolute; left: 0; top: 0; width: 0; height: 0; }
     .mf i { position: absolute; left: 0; top: 0; display: block; transform-origin: 0 0; }
     .mf .mf-f { width: 100px; height: 100px; background: ${T.hi}; }
     .mf .mf-h { width: 100px; height: 2.5px; background: ${T.ink}; }
     .mf .mf-v { width: 2.5px; height: 100px; background: ${T.ink}; }
-    .pt { display: block; overflow: hidden; line-height: 1.25; }
+    .pt { display: block; overflow: hidden; line-height: 1.25; } /* a plate's name mask */
     .pw { display: block; }
-    .klab { position: absolute; font-size: 30px; font-weight: 400; letter-spacing: 0.04em; line-height: 36px; white-space: nowrap; }
-    .km { display: inline-block; overflow: hidden; vertical-align: top; }
-    .kw { display: inline-block; }
-    .hlt { position: absolute; overflow: visible; }
-    .wc { position: absolute; inset: 0; }
-    .plane { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+    .klab { position: absolute; font-size: 30px; font-weight: 400; letter-spacing: 0.04em; line-height: 36px; white-space: nowrap; } /* kinetic label text (klabel builds it) */
+    .km { display: inline-block; overflow: hidden; vertical-align: top; } /* a word or character mask (kword, typed, odo) */
+    .kw { display: inline-block; } /* the masked unit kin / kout / type move */
+    .hlt { position: absolute; overflow: visible; } /* trim highlight box svg (hlTrim) */
+    .wc { position: absolute; inset: 0; } /* a window's contents layer (#id-c), the thing wipeIn / wipeOut clip */
+    .plane { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; } /* full-frame group that drifts as one parallax plane (drift) */
 `;
 // shared timeline helpers (seek-safe: only fromTo/to tweens on a paused timeline)
 const HELPERS = `
@@ -569,6 +604,23 @@ const HELPERS = `
       const morph = (id, A, B, at, dur, ease) => {
         const a = mfV(A), b = mfV(B);
         for (const k in a) tl.fromTo("#" + id + "-" + k, a[k], { ...b[k], duration: dur, ease, immediateRender: false }, at);
+      };
+      // drop-in (DESIGN.md 5.8 "assemble bottom-up"): an element or a list falls dy px into place with a short fade.
+      // The from-state is set once at build and both moves are .to tweens, so the pair never trips
+      // gsap_repeated_fromto_without_baseline. o = { dy (-40), dur (0.5), fade (0.1), stagger (0), ease (E.out) }
+      const dropIn = (s, at, o = {}) => {
+        const dy = o.dy == null ? -40 : o.dy, dur = o.dur || 0.5, fade = o.fade || 0.1, st = o.stagger || 0;
+        gsap.set(s, { y: dy, opacity: 0 });
+        tl.to(s, { y: 0, duration: dur, ease: o.ease || E.out, stagger: st }, at);
+        tl.to(s, { opacity: 1, duration: fade, ease: "none", stagger: st }, at);
+      };
+      // a crafted object's parts, bottom-up (pass its parts list: assemble(q("#a-p0, #a-p1"), at))
+      const assemble = (s, at, o = {}) => dropIn(s, at, { stagger: 0.07, ...o });
+      // swapPlate()'s roll: the old name rises out of the mask as the new one rises in; the old tag (if any) pops out
+      const swapName = (id, at, dur = 0.36) => {
+        tl.fromTo("#" + id + "-a", { yPercent: 0 }, { yPercent: -110, duration: dur, ease: E.inOut }, at);
+        tl.fromTo("#" + id + "-b", { yPercent: 110 }, { yPercent: 0, duration: dur, ease: E.inOut }, at);
+        if (document.querySelector("#" + id + "-tag")) unpop("#" + id + "-tag", at);
       };
       // packet cube travels a sampled path, looping with an even pace
       const flow = (s, pts, at, dur, reps) => {
@@ -724,6 +776,117 @@ function ctaScene(sc, cfg) {
   return { lift: 0, svg: svgA, html: `<div id="${p}-a">${htmlA}</div><div id="${p}-b">${htmlB}</div>`, anim };
 }
 
+// the CTA's layout rects (the same geometry as ctaScene): n1 = the first trust plate (where a match cut lands; use
+// L.ctaRects(reel.cta).n1 as the plan's R rect), pc = the last plate, code = its Terminal (or null), device = { ox, oy }
+// (or null), repo = the repo window. All [x, y, w, h] in the CTA's .lift (lift 0).
+function ctaRects(cfg) {
+  const items = cfg.trust || [], top = items.slice(0, -1), bottom = items[items.length - 1];
+  const RW = 964 - 5, RH = Math.round((RW * (cfg.shotH || 1300)) / 2560);
+  const noDev = cfg.device === false, code = bottom && bottom.code;
+  const LH = noDev ? 40 : 34, codeH = code ? 46 + 30 + code.length * LH : 0;
+  const stackH = items.length * 90 - 22 + (code ? 30 + codeH : 0);
+  const y0 = noDev ? Math.round(805 - stackH / 2) : code ? 310 : 400;
+  const pcY = noDev ? y0 + top.length * 90 : code ? 968 : 1090, codeY = pcY + (noDev ? 98 : 82);
+  const tops = top.map((_, i) => [290, y0 + i * 90, 500, 68]), pc = bottom ? [290, pcY, 500, 68] : null;
+  return {
+    tops, pc, n1: tops[0] || pc, code: code ? [190, codeY, 700, codeH] : null, LH, FS: noDev ? 28 : 24,
+    device: noDev ? null : { ox: 470, oy: code ? 696 : 800 }, repo: [58, 370, 964, RH + 5], RW, RH,
+  };
+}
+// v4 CTA (DESIGN.md 6.1 "v4 CTA motion"): ctaScene's layout and config (reel.json -> cta), plus a match cut in.
+// o = { inbound: the plan's handoff into this scene (P.inbound("cta")), or null for no cut; cam: P.cam("cta") }.
+// The handoff lands as the first trust plate (its name rises on its word); later plates wipe in on their words; the
+// device slides in and its glyph draws; a Terminal (last item's code) wipes in on that item's word and types. On the
+// follow word everything clears and the Terminal's frame (else the first plate's) grows into the repo window, then the
+// URL, "Follow for more useful tools" (fixed text), the underline and the Follow click.
+// Scene file: module.exports = (L, s, reel) => { const P = require("./_plan.cjs"); return L.ctaCut(s, reel, { inbound: P.inbound("cta"), cam: P.cam("cta") }); };
+function ctaCut(sc, reel, o = {}) {
+  const { p, dur } = sc, at = sc.at, cfg = reel.cta || {}, h = o.inbound || null;
+  const R = ctaRects(cfg), items = cfg.trust || [], top = items.slice(0, -1), bottom = items[items.length - 1];
+  if (!items.length) throw new Error(`${sc.id}: reel.json cta.trust is empty`);
+  if (h && h.B.some((v, i) => Math.abs(v - R.n1[i]) > 0.5))
+    throw new Error(`${sc.id}: the inbound handoff lands on [${h.B}], but the first trust plate is [${R.n1}]: use L.ctaRects(reel.cta).n1 as its rect in _plan.cjs`);
+  const code = bottom.code, noDev = !R.device;
+  const plates = [...top.map((it, i) => ({ it, id: `${p}-n${i + 1}`, r: R.tops[i] })), { it: bottom, id: `${p}-pc`, r: R.pc }];
+  const urlTop = 370 + R.RH + 5 + 48, ftTop = urlTop + 102, btnTop = urlTop + 214;
+  const htmlA = plates.map((x) => plate(x.id, x.r[0], x.r[1], 500, x.it.text, x.it.kind)).join("") +
+    (code ? appWinC(`${p}-code`, ...R.code, "Terminal",
+      code.map((l, i) => `<div class="code" style="left:26px;top:${62 + i * R.LH}px;font-size:${R.FS}px">${typed(`${p}-cl${i}`, l)}</div>`).join("")) : "");
+  const svgA = `<g id="${p}-ga">${noDev ? "" : (typeof cfg.device === "function" ? cfg.device : (id, x, y) => laptop(id, x, y, cfg.glyph))(`${p}-laptop`, R.device.ox, R.device.oy)}</g>`;
+  const htmlB =
+    `<div id="${p}-repo" class="win" style="left:58px;top:370px;width:964px;height:${R.RH + 5}px">` +
+    `<img id="${p}-shot" src="${cfg.shot || "assets/shots/repo-header.png"}" alt="" style="position:absolute;left:0;top:0;width:${R.RW}px;height:${R.RH}px"></div>` +
+    `<div class="ctr" style="top:${urlTop}px"><div id="${p}-url" class="url">${reel.url || cfg.url}</div></div>` +
+    `<div class="ctr" style="top:${ftTop}px"><div id="${p}-ft" class="ftxt">${["Follow", "for", "more"].map(kword).join(" ")} <span class="hl"><i id="${p}-ul"></i><b>${kword("useful")} ${kword("tools")}</b></span></div></div>` +
+    `<div id="${p}-btn" class="btn" style="left:330px;top:${btnTop}px">` +
+    `<div id="${p}-bA" class="bst on"><svg width="58" height="40" viewBox="0 0 58 40">${tagInner("plus")}</svg><span>Follow</span></div>` +
+    `<div id="${p}-bB" class="bst off"><svg width="58" height="40" viewBox="0 0 58 40">${tagInner()}</svg><span>Following</span></div></div>` +
+    `<svg id="${p}-cur" class="cursor" width="46" height="62" viewBox="0 0 46 62" style="left:700px;top:${btnTop + 62}px">${POINTER}</svg>`;
+  const land = h ? h.inDur : 0;
+  // beat A: the first plate is the landing (only its name rises), the rest wipe in on their words; device between them
+  let anim = h ? `${morphCode(`${p}-mf`, h, "in", 0, `#${plates[0].id}`)}
+      gsap.set("#${plates[0].id} .pw", { yPercent: 110 });` : "";
+  anim += `
+      drift("#${p}-a", ${r2(land)}, ${SETTLE}, -8);`;
+  let prev = land - 0.25;
+  const tagAt = (t, w) => r2(Math.max(t + 0.3, at(w)));
+  const plateCode = (x, i, after) => {
+    const t = r2(Math.max(land + 0.02, at(x.it.word) - 0.3, after + 0.3));
+    const tag = x.it.kind === "none" ? "" : ` pop("#${x.id}-tag", ${tagAt(t, x.it.word)});`;
+    return { t, code: (i === 0 && h ? `
+      tl.fromTo("#${x.id} .pw", { yPercent: 110 }, { yPercent: 0, duration: 0.45, ease: E.out, immediateRender: false }, ${t});` : `
+      plateIn("#${x.id}", ${t});`) + tag };
+  };
+  plates.slice(0, -1).forEach((x, i) => { const c = plateCode(x, i, prev); anim += c.code; prev = c.t; });
+  if (!noDev) {
+    const dev = r2(Math.max(land + 0.1, prev + 0.4));
+    anim += `
+      slide("#${p}-laptop", ${dev});` + (typeof cfg.device === "function" ? "" : `
+      draw("#${p}-laptop-gl", ${r2(dev + 0.4)}, 0.6);`);
+    prev = dev + 0.2;
+  }
+  { const c = plateCode(plates[plates.length - 1], plates.length - 1, prev); anim += c.code; prev = c.t; }
+  if (code) {
+    const tTerm = r2(Math.max(prev + 0.1, at(bottom.word) - 0.02)), tCode = r2(tTerm + 0.2);
+    anim += `
+      wipeIn("#${p}-code", ${tTerm}, 0.45);` + code.map((_, i) => `
+      type("#${p}-cl${i}", ${r2(tCode + i * 0.1)}, 0.006);`).join("");
+  }
+  // beat B: on the follow word everything clears; the Terminal's frame (else the first plate's) grows into the repo window
+  const B = r2(at(cfg.follow || "follow") + 0.02), gDur = 0.5, tRepo = r2(B + gDur), b = (d) => r2(B + d);
+  if (dur < B + 2.8) throw new Error(`${sc.id}: scene too short for the follow click (dur ${dur}, needs ${r2(B + 2.8)})`);
+  const src = code ? R.code : R.n1, srcSel = code ? `#${p}-code` : `#${plates[0].id}`;
+  const others = plates.filter((x) => code || x !== plates[0]).map((x) => `#${x.id}`);
+  anim += (others.length ? `
+      wipeOut(q("${others.join(", ")}"), ${b(-0.36)}, 0.26, 0.05);` : "") + (noDev ? "" : `
+      away("#${p}-ga", ${b(-0.36)}, -24, 0.3);`) + (code ? `
+      wipeOut("#${p}-code-c", ${b(-0.14)}, 0.14);` : `
+      tl.fromTo("${srcSel} .pw", { yPercent: 0 }, { yPercent: -110, duration: 0.26, ease: E.in, immediateRender: false }, ${b(-0.34)});` +
+      (plates[0].it.kind === "none" ? "" : ` unpop("${srcSel}-tag", ${b(-0.34)});`)) + `
+      mfSet("${p}-mi", ${js(src)}); gsap.set(q("#${p}-mi, #${p}-b"), { opacity: 0 });
+      tl.set("${srcSel}", { opacity: 0 }, ${B}); tl.set("#${p}-mi", { opacity: 1 }, ${B});
+      morph("${p}-mi", ${js(src)}, ${js(R.repo)}, ${B}, ${gDur}, E.inOut);
+      tl.set("#${p}-mi", { opacity: 0 }, ${tRepo}); tl.set("#${p}-b", { opacity: 1 }, ${tRepo});
+      gsap.set("#${p}-cur", { opacity: 0 });
+      wipeIn("#${p}-shot", ${tRepo}, 0.55);
+      wipeIn("#${p}-url", ${b(0.6)}, 0.45);
+      kin("#${p}-ft", ${b(0.72)}, 0.09, 0.55);
+      wipe("#${p}-ul", ${b(1.1)}, 0.42);
+      wipeIn("#${p}-btn", ${b(1.2)}, 0.42);
+      // the cursor glides in on a gentle arc and clicks Follow
+      tl.set("#${p}-cur", { opacity: 1 }, ${b(1.5)});
+      tl.fromTo("#${p}-cur", { x: 170 }, { x: 0, duration: 0.7, ease: E.out }, ${b(1.5)});
+      tl.fromTo("#${p}-cur", { y: 150 }, { y: 0, duration: 0.7, ease: E.outQ }, ${b(1.5)});
+      tl.to("#${p}-cur", { scale: 0.88, duration: 0.08, yoyo: true, repeat: 1, ease: E.inOut, transformOrigin: "0% 0%" }, ${b(2.2)});
+      tl.to("#${p}-btn", { scale: 0.96, duration: 0.08, yoyo: true, repeat: 1, ease: E.inOut }, ${b(2.2)});
+      tl.set("#${p}-bA", { opacity: 0 }, ${b(2.26)}); tl.set("#${p}-bB", { opacity: 1 }, ${b(2.26)});
+      pop("#${p}-bB svg", ${b(2.3)});`;
+  return {
+    lift: 0, cam: o.cam, svg: svgA,
+    html: `<div id="${p}-a">${htmlA}</div><div id="${p}-b">${htmlB}</div>` + mframe(`${p}-mi`),
+    over: h ? mframe(`${p}-mf`) : "", anim,
+  };
+}
 // placeholder for a scene whose file doesn't exist yet (shows up in preview so nothing is forgotten)
 const todoScene = (sc) => ({
   lift: 0, html: "",
@@ -738,6 +901,7 @@ const todoScene = (sc) => ({
 // shot); attr = extra attributes (MB() for screens that push). #id-o = a fixed layer over the screens (o.over: trim boxes
 // that don't zoom). The viewport sits in #id-c, so wipeOut("#id-c") leaves the bare outline for a morph frame.
 // Viewport size: (w - 5) x (h - 5).
+// ids: #id (.win), #id-c (wipe layer), #id-v (viewport), #id-o (fixed over layer), each screen #<sid> · starts: visible
 const screenWin = (id, x, y, w, h, screens, o = {}) => {
   const vw = w - 5, vh = h - 5;
   return `<div id="${id}" class="win" ${o.attr || ""} style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div id="${id}-c" class="wc">` +
@@ -754,6 +918,7 @@ const fitShot = (ar, vw, vh, mode = "width") => {
 };
 // bare framed shot (a phone screen, a logo tile): .win box (2.5px ink edge) with the image (#id-i) filling it, in #id-c.
 // pad = inset of the image as a fraction of the box (logo tiles; the image keeps its aspect).
+// ids: #id (.win), #id-c (wipe layer), #id-i (img) · starts: visible
 const shotBox = (id, x, y, w, h, src, o = {}) => {
   const pad = o.pad || 0, iw = w - 5, ih = h - 5;
   return `<div id="${id}" class="win" ${o.attr || ""} style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div id="${id}-c" class="wc">` +
@@ -761,6 +926,7 @@ const shotBox = (id, x, y, w, h, src, o = {}) => {
     (o.inner || "") + `</div></div>`;
 };
 // agent window: its logo, placeholder rows, a lime progress bar (#id-pf, grows with scaleX); contents in #id-c
+// ids: #id, #id-c, lime bar #id-pf (full width: tween scaleX 0 -> 1) · starts: visible
 const agentWin = (id, x, y, w, h, title, logo, o = {}) => {
   const lx = o.lx ?? (o.logo === false ? 22 : 96);
   const rows = (o.lines || [0.8, 0.62, 0.7]).filter((f, i) => 70 + i * 34 + 16 < h - 66)
@@ -772,12 +938,14 @@ const agentWin = (id, x, y, w, h, title, logo, o = {}) => {
 
 // branch rails: a git graph. trunk = path d, branches = [d, ...] (neutral tubes that draw on, each with a lime twin
 // #id-g<i> that draws over it when changes flow down it), nodes = [[x, y], ...] commit dots #id-n<k> that pop as the trim passes.
+// ids: trunk #id-t, branches #id-b<i>, lime twins #id-g<i>, commit dots #id-n<k> · starts: all visible and drawn; draw() / pop() them in
 const rails = (id, trunk, branches, nodes) =>
   `<g id="${id}">` + dtube(`${id}-t`, trunk, { w: 12 }) +
   branches.map((d, i) => dtube(`${id}-b${i}`, d, { w: 12 })).join("") +
   branches.map((d, i) => dtube(`${id}-g${i}`, d, { w: 12, fill: T.lime })).join("") +
   nodes.map(([x, y], k) => `<circle id="${id}-n${k}" cx="${x}" cy="${y}" r="14" fill="${T.hi}" stroke="${T.ink}" stroke-width="2.5"/>`).join("") + `</g>`;
 // dimension line: a measured span with end ticks; the line (#id-l0/l1) trims out from its centre, the ticks (#id-a/b) pop
+// ids: half lines #id-l0/l1, ticks #id-a/b · starts: lines hidden (dashoffset 1), ticks visible; draw() the lines, pop() the ticks
 const dimLine = (id, x1, x2, y, tick = 20) => {
   const m = r1((x1 + x2) / 2), p = (k, d) => `<path id="${id}-${k}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="${d}" fill="none" stroke="${T.ink}" stroke-width="2.5" stroke-linecap="square"/>`;
   return `<g id="${id}">${p("l0", `M${m} ${y} H${x1}`)}${p("l1", `M${m} ${y} H${x2}`)}` +
@@ -863,6 +1031,7 @@ function pathPts(d, n = 28) {
 // spark: a lime dot with a dark edge (#id-d) and a ping ring (#id-r). It is the implode's seed, and after the cut it
 // rides the front of the trims that grow out of the seed (sdraw), so the first object is drawn by that point.
 // Place it in the same svg as the paths it draws.
+// ids: #id, dot #id-d, ring #id-r · starts: hidden; sparkRun / sdraw / ping show it
 const spark = (id) =>
   `<g id="${id}" data-layout-allow-overlap><circle id="${id}-r" r="7" fill="none" stroke="${T.ink}" stroke-width="2" opacity="0"/>` +
   `<circle id="${id}-d" r="7.5" fill="${T.lime}" stroke="${T.on}" stroke-width="2.5" opacity="0"/></g>`;
@@ -889,6 +1058,7 @@ const sdraw = (head, sel, d, at, dur = 0.5, o = {}) => `
 // implode to a seed: the whole scene (its .lift) shrinks into one screen point and leaves a lime seed there, which
 // the next scene grows its first line from (point -> line -> object). For a turn in the argument ("but here's the
 // catch"). pt = screen point; lift and cam = this scene's lift and its camera state at the implode.
+// ids: #<p>-sd (a spark in the screen layer) · starts: hidden; implode / seedIn place and show it
 const seed = (p) => `<svg class="art" viewBox="0 0 1080 1920" data-layout-allow-overlap style="position:absolute;left:0;top:0">${spark(`${p}-sd`)}</svg>`;
 const implode = (p, at, pt, lift, cam, dur = 0.36) => {
   const { s, x, y } = camOf(cam);
@@ -906,8 +1076,9 @@ const seedIn = (p, pt) => `
 
 // odometer digits: each digit is a masked column 0-9 0-9 that rolls (E.inOut) to its next value, so a number changes
 // by rolling, not by a swap. Tabular figures, any font size; lh = line height in px.
+// ids: #id-d<i>, one column per digit · starts: every column shows 0, not `value`: gsap.set("#id-d<i>", { y: -digit * lh }) first, or roll(..., first = true)
 const odo = (id, value, lh) => String(value).split("").map((c, i) => /\d/.test(c)
-  ? `<span class="km" style="height:${lh}px;line-height:${lh}px"><span id="${id}-d${i}" style="display:block">${Array.from({ length: 20 }, (_, k) => `<span style="display:block;height:${lh}px">${k % 10}</span>`).join("")}</span></span>`
+  ? `<span class="km" data-layout-allow-overflow style="height:${lh}px;line-height:${lh}px"><span id="${id}-d${i}" data-layout-allow-overflow style="display:block">${Array.from({ length: 20 }, (_, k) => `<span style="display:block;height:${lh}px">${k % 10}</span>`).join("")}</span></span>`
   : `<span>${c}</span>`).join("");
 // roll digits from value a to b (same length); each digit moves forward (9 -> 0 passes through 10)
 const roll = (id, a, b, lh, at, dur = 0.5, first = false) => {
@@ -947,6 +1118,138 @@ function chrome(scenes, total) {
   return { html, anim, total };
 }
 
+// ---------- build-time guards and planning (Harness2 reel) ----------
+// Each helper here turns a mistake that used to surface only in a snapshot or a check warning into an error at build
+// time, with the fix in the message.
+// hold check for an in/out pair taken from two words: returns tout, or throws when out comes less than min s after in
+// (a label that flashes, or an exit that cuts off its own entrance)
+const hold = (tin, tout, min = 0.6, what = "element") => {
+  if (!(tout >= tin + min - 1e-6)) throw new Error(`${what}: out at ${r2(tout)} is only ${r2(tout - tin)}s after in at ${r2(tin)} (needs ${min}s). Derive it as Math.max(nextWord, in + ${min}).`);
+  return tout;
+};
+const wordCount = (lines) => (Array.isArray(lines) ? lines.join(" ") : String(lines)).trim().split(/\s+/).length;
+// kinetic label in AND out as one call (anim code): the rise must finish, plus o.hold s (default 0.3), before the exit.
+// n = the label's word count, or its lines (as passed to klabel). o = { st (0.05), dur (0.5), hold (0.3), ost (kout stagger) }
+const kspan = (sel, n, tin, tout, o = {}) => {
+  const k = typeof n === "number" ? n : wordCount(n), st = o.st == null ? 0.05 : o.st, dur = o.dur || 0.5;
+  const end = r2(tin + (k - 1) * st + dur);
+  hold(end, tout, o.hold == null ? 0.3 : o.hold, `label ${sel} (its rise ends at ${end})`);
+  return `kin("${sel}", ${r2(tin)}, ${st}, ${dur}); kout("${sel}", ${r2(tout)}${o.ost != null ? `, ${o.ost}` : ""});`;
+};
+// plate whose name rolls from one value to another (DESIGN.md 7 "Value or state swap"); swapName(id, at) runs the roll.
+// Both names share one mask and the longer one sets its width, so neither is clipped. kind = the tag shown with the
+// first value ("none" = no tag); it pops out as the name rolls. ids: #id-a (from), #id-b (to), #id-tag.
+// starts: shows `from` (and its tag); swapName(id, at) rolls it
+const swapPlate = (id, x, y, w, from, to, kind) => {
+  const A = `<span id="${id}-a" class="pw">${from}</span>`, B = `<span id="${id}-b" class="pw">${to}</span>`;
+  const abs = (h) => h.replace(`class="pw"`, `class="pw" style="position:absolute;left:0;top:0;white-space:nowrap"`);
+  const inner = from.length >= to.length ? A + abs(B) : B + abs(A);
+  return `<div id="${id}" class="plate" style="left:${x}px;top:${y}px;width:${w}px"><span class="pt" style="position:relative">${inner}</span>` +
+    (kind === "none" ? "" : `<svg id="${id}-tag" class="tag" width="58" height="40" viewBox="0 0 58 40">${tagInner(kind)}</svg>`) + `</div>`;
+};
+// screenshot region: rect [x, y, w, h] in the source image's own pixels (as read off the PNG) -> px in the shot as
+// shown (srcW = the file's width, sw = its shown width from fitShot), and optionally after zoomIn(s, origin) inside its
+// window. Use the result for hlTrim boxes (in the window's fixed over layer when the shot is zoomed).
+const regionOf = (rect, srcW, sw, o = {}) => {
+  const k = sw / srcW, s = o.zoom || 1, [ox, oy] = o.origin || [0, 0];
+  return [r1(ox + (rect[0] * k - ox) * s), r1(oy + (rect[1] * k - oy) * s), r1(rect[2] * k * s), r1(rect[3] * k * s)];
+};
+// shapes for a scene's `boxes` (build-scenes checks them): a rect [x, y, w, h], or a convex outline [[x, y], ...].
+// boundsOf = the rect round some points; hullOf = their convex outline; isoHull = the silhouette of an iso box
+// make(ox, oy).box(x, y, z, w, d, h), a hexagon: use it for iso objects, whose rects overlap at the corners when the
+// objects themselves don't. isoBounds = that box's rect.
+const boundsOf = (pts) => {
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  return [r1(Math.min(...xs)), r1(Math.min(...ys)), r1(Math.max(...xs) - Math.min(...xs)), r1(Math.max(...ys) - Math.min(...ys))];
+};
+function hullOf(pts) {
+  const s = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of s) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = s.length - 1; i >= 0; i--) { const p = s[i]; while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return [...lo.slice(0, -1), ...up.slice(0, -1)].map((p) => [r1(p[0]), r1(p[1])]);
+}
+const isoCorners = (ox, oy, x, y, z, w, d, h) => {
+  const m = make(ox, oy), P = [];
+  for (const a of [x, x + w]) for (const b of [y, y + d]) for (const c of [z, z + h]) P.push(m.P(a, b, c));
+  return P;
+};
+const isoHull = (...a) => hullOf(isoCorners(...a));
+const isoBounds = (...a) => boundsOf(isoCorners(...a));
+// cut plan factory: the v4 `_plan.cjs` machinery in one call, so a reel's plan only declares data.
+// timing = script/timing.json. o = {
+//   keys:   scene keys in order (default: each scene's line id),
+//   lift:   { key: px } (default 0),   camEnd: { key: { s, x, y } } (default { s: 1.03 }; hold-cut sources default { s: 1 }),
+//   R:      { name: [x, y, w, h] } rects in each scene's .lift that the cuts connect,
+//   hands:  { h1: [from, to, rectA, rectB, t0, land] } rect = an R name or an array; cut = to's start; land snaps to the
+//           nearest music beat (o.snap: false keeps it as given),
+//   holds:  [[from, to], ...] hold cuts: the same frame on both sides, so from's camera must end at rest and both lifts match }
+// Returns { KEYS, start, dur, beat, lift, camEnd, R, H, scr, hand, cam(key, { t0 }), side(key, rect, side), inbound, outbound,
+// report (one row per hand: out / in side, f, issues, fix), table() (that report as text; build-scenes prints it and
+// warns on every hand whose side or f is out of range, with a t0 / land that fits) }.
+function plan(timing, o = {}) {
+  const KEYS = o.keys || timing.scenes.map((s) => s.line);
+  if (KEYS.length !== timing.scenes.length) throw new Error(`plan: ${KEYS.length} keys for ${timing.scenes.length} scenes`);
+  const start = {}, dur = {};
+  timing.scenes.forEach((s, i) => { start[KEYS[i]] = s.start; dur[KEYS[i]] = s.dur; });
+  const beat = timing.beats ? beatGrid(timing.beats) : (t) => t;
+  const holds = o.holds || [], R = o.R || {};
+  const lift = Object.fromEntries(KEYS.map((k) => [k, (o.lift || {})[k] || 0]));
+  const camEnd = Object.fromEntries(KEYS.map((k) => [k, { x: 0, y: 0, ...((o.camEnd || {})[k] || { s: holds.some(([f]) => f === k) ? 1 : 1.03 }) }]));
+  for (const [f, t] of holds) {
+    if (!(f in start) || !(t in start)) throw new Error(`plan: hold cut ${f} -> ${t} names an unknown scene`);
+    const c = camEnd[f];
+    if (c.s !== 1 || c.x || c.y) throw new Error(`plan: hold cut ${f} -> ${t}: ${f}'s camera must end at rest ({ s: 1 }), not ${js(c)}; the next scene starts from rest`);
+    if (lift[f] !== lift[t]) throw new Error(`plan: hold cut ${f} -> ${t}: the lifts differ (${lift[f]} vs ${lift[t]})`);
+  }
+  const rect = (r) => {
+    if (typeof r !== "string") return r;
+    if (!R[r]) throw new Error(`plan: no rect R.${r}`);
+    return R[r];
+  };
+  const scr = (key, r, settled = true) => toScreen(settled ? camEnd[key] : null, lift[key], rect(r));
+  const hand = (from, to, A, B, t0, land) => {
+    const cut = start[to];
+    if (cut == null) throw new Error(`plan: handoff ${from} -> ${to}: unknown scene ${to}`);
+    return { ...handoff({ A: scr(from, A), B: scr(to, B, false), t0, cut, land: o.snap === false ? land : beat(land) }), from, to, at: r3(t0 - start[from]) };
+  };
+  const H = Object.fromEntries(Object.entries(o.hands || {}).map(([k, a]) => [k, hand(...a)]));
+  // handoff report (DESIGN.md 7 "Handoffs": each side 0.23-0.5 s, the cut at f 0.35-0.6): one row per hand, with the
+  // beat snap and, when a value is out of range, a t0 / land that fits (the nearest beat whose in side fits)
+  const SIDE = [0.23, 0.5], F = [0.35, 0.6], inR = (v, [a, b]) => v >= a - 1e-6 && v <= b + 1e-6;
+  const report = Object.entries(H).map(([k, h]) => {
+    const asked = (o.hands[k] || [])[5], issues = [];
+    if (!inR(h.outDur, SIDE)) issues.push(`out side ${h.outDur}s`);
+    if (!inR(h.inDur, SIDE)) issues.push(`in side ${h.inDur}s`);
+    if (!inR(h.f, F)) issues.push(`f ${h.f}`);
+    let fix = null;
+    if (issues.length) {
+      const beats = [...new Set(Array.from({ length: 12 }, (_, i) => beat(h.cut + SIDE[0] + i * 0.03)))]
+        .filter((b) => inR(r3(b - h.cut), SIDE)).sort((a, b) => Math.abs(a - h.cut - 0.35) - Math.abs(b - h.cut - 0.35));
+      const land = beats.length ? beats[0] : null;
+      if (land != null) {
+        const inD = r3(land - h.cut), outD = Math.min(SIDE[1], Math.max(SIDE[0], inD));
+        fix = { t0: r3(h.cut - outD), land };
+      }
+    }
+    return { k, from: h.from, to: h.to, t0: h.t0, cut: h.cut, land: h.land, asked, out: h.outDur, in: h.inDur, f: h.f, issues, fix };
+  });
+  const table = () => [`handoffs (each side ${SIDE.join("-")} s, f ${F.join("-")})`,
+    ...report.map((r) => `  ${r.k.padEnd(5)} ${(r.from + " -> " + r.to).padEnd(20)} t0 ${String(r.t0).padEnd(6)} cut ${String(r.cut).padEnd(6)} land ${String(r.land).padEnd(7)}` +
+      `${r.asked != null && Math.abs(r.asked - r.land) > 0.001 ? `(asked ${r.asked}) ` : ""}out ${r.out} in ${r.in} f ${r.f}` +
+      (r.issues.length ? `  ⚠ ${r.issues.join(", ")}${r.fix ? `: try t0 ${r.fix.t0}, land ${r.fix.land}` : ": no beat gives an in side of 0.23-0.5 s (keep it, or plan with snap: false)"}` : "  ✓"))].join("\n");
+  const inbound = (key) => Object.values(H).find((h) => h.to === key);
+  const outbound = (key) => Object.values(H).find((h) => h.from === key);
+  // the scene's camera move: from its landing, settling within SETTLE s, held still through its outbound handoff
+  const cam = (key, c = {}) => {
+    const i = inbound(key), h = outbound(key), t0 = c.t0 != null ? c.t0 : i ? i.inDur : 0;
+    return { ...camEnd[key], t0, t1: Math.min(h ? h.at : dur[key], t0 + SETTLE) };
+  };
+  const side = (key, r, sideName) => { const q = rect(r); return { lx: q[0], ly: q[1], lift: lift[key], cam: sideName === "out" ? camEnd[key] : null }; };
+  return { KEYS, start, dur, beat, lift, camEnd, R, H, scr, hand, cam, side, inbound, outbound, report, table };
+}
+
 
 module.exports = {
   fs, path, T, C, S, make, tube, arrow, leader, check,
@@ -957,7 +1260,8 @@ module.exports = {
   BZ_SRC, EZ, bz, E, r2, r3, CAM_O, camOf, toScreen, placeAt, lerp, lerpR, handoff, segEase, carry, morphCode,
   SETTLE, MB, mframe, appWinC, trimRect, hlTrim, pulse, klabel, typed, beatGrid,
   anat, selector, board,
-  CSS, HELPERS, scene, sceneRaw, limeEdges, keyOf, makeCues, ctaScene, todoScene,
+  CSS, HELPERS, scene, sceneRaw, limeEdges, keyOf, makeCues, ctaScene, ctaRects, ctaCut, todoScene,
   screenWin, fitShot, shotBox, agentWin, rails, dimLine, stretch, lensIn, lensOut, converge, pushScreens, zoomIn,
   flatPath, pathPts, spark, sparkRun, ping, sdraw, seed, implode, seedIn, odo, roll, chrome,
+  kword, hold, wordCount, kspan, swapPlate, regionOf, boundsOf, hullOf, isoHull, isoBounds, plan,
 };

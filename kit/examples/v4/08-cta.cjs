@@ -18,7 +18,7 @@ module.exports = (L, s, reel) => {
   const [TX, TY, TW, TH] = P.R.ctaTerm, REPO = [58, 370, 964, RH + 5];
   if (TY !== codeY || TH !== codeH) throw new Error(`cta: plan's ctaTerm ${P.R.ctaTerm} != terminal ${TX},${codeY},${TW},${codeH}`);
   if (P.R.ctaN1.join() !== [290, y0, 500, 68].join()) throw new Error(`cta: plan's ctaN1 ${P.R.ctaN1} != plate 290,${y0},500,68`);
-  const kw = (w) => `<span class="km"><span class="kw">${w}</span></span>`;
+  const kw = L.kword;   // a masked word (kin / kout move it)
   const htmlA =
     top.map((it, i) => plate(`${p}-n${i + 1}`, 290, y0 + i * 90, 500, it.text, it.kind)).join("") +
     plate(`${p}-pc`, 290, pcY, 500, bottom.text, bottom.kind) +

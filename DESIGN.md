@@ -137,6 +137,7 @@ Top = `g100` (or `hi` for small parts), left = `g300`, right = `g500`. Recesses 
   - **Kinetic label** (`klabel(id, x, y, lines, {a})`): a callout label (same type as section 3) with each word in a mask, so it can rise in word by word.
   - **Typed value** (`typed(id, text)`): text whose characters rise in one by one inside a mask. Use it for field values and terminal lines. `--` stays one unit.
   - **Label plate mask:** a plate's name sits in `.pt > .pw`, so `plateIn()` can wipe the frame and rise the name. It looks the same at rest.
+  - **Swap plate** (`swapPlate(id, x, y, w, from, to, kind)` + `swapName(id, at)`, Harness2): a plate whose name rolls to a new value inside the same mask (the old name rises out as the new one rises in, and the old tag pops out). The longer name sizes the mask, so neither is clipped. Use it when a carried plate becomes something else on landing, or for a value swap.
 - **Screenshot objects (Paseo, `kit/examples/paseo/`):**
   - **Screen frame** (`screenWin(id, x, y, w, h, screens, {over})`): a bare 2.5px ink outline (no title bar, 5.7) whose inside is a viewport (`#id-v`, (w − 5) × (h − 5), overflow hidden) holding one or more real screens (`{id, src, w, h, x?, y?, inner?, attr?}`) that push, zoom and pan inside the fixed frame. `inner` HTML moves and zooms with its screen; `over` is a fixed layer (`#id-o`) for trim boxes that must not zoom. The viewport sits in `#id-c`, so the bare outline is left for a morph frame. Size screens with `fitShot(ar, vw, vh, "width" | "cover")` and the frame to the screen (h = shot height + 5), so no empty strip shows. A single still shot can also use `shotBox`.
   - **Shot box** (`shotBox(id, x, y, w, h, src, {pad, inner})`): a bare screenshot (a phone screen) or a logo tile in the 2.5px ink outline, contents in `#id-c`, so it can be a morph source or target. `pad` insets a logo and keeps its aspect.
@@ -176,7 +177,7 @@ For the one object a beat is *about* (the product's engine, the thing that route
   - **Rotary selector** (`selector(id, ox, oy, u = 1.3)`): base on feet, housing with two output glands (port 0 lower-left on +y, port 1 lower-right on +x), a lamp each, detent ticks, collar, knob with pointer, input coupling on the axis. Returns `{svg, parts (5, bottom-up), top, ports}`; pointer `#id-ptr` (`gsap.set(svgOrigin "0 0")`, rotation 0 = port 0, −90 = port 1), lamps `#id-lp0/1`. Use it for a choice, a switch, a config value that picks a route.
   - **Router board** (`board(id, ox, oy, mark, u = 1)`): standoffs, bevelled board, vents, screws, traces, a marked chip, capacitors and an input socket, three output glands with lamps (two on +y, one on +x). Same footprint as `adapter()`; `(ox, oy)` is the back corner. Returns `{svg, parts (3), sock, ports}`; lamps `#id-lmp0..2`. Use it for an engine, gateway or router that fans one input out.
 - **Motion:**
-  - **Assemble bottom-up:** the parts drop in order (y −34…−40 → 0, 0.36–0.5s `E.out`, stagger 0.045–0.07s), each with a **short** opacity fade (0.08–0.1s). A long fade shows the parts beneath through it.
+  - **Assemble bottom-up:** the parts drop in order (y −34…−40 → 0, 0.36–0.5s `E.out`, stagger 0.045–0.07s), each with a **short** opacity fade (0.08–0.1s). A long fade shows the parts beneath through it. `assemble(q(parts), at)` does exactly this (and `dropIn(sel, at, o)` for one element or a sheet).
   - **Mechanism:** a knob turns one detent (−90°, 0.55s `E.inOut`, no overshoot); the old lamp goes out as it leaves, the new lamp and lane light as it arrives.
   - **Packets** drop into the input (socket or cap), hide, then a new cube leaves by the selected port.
   - **Exit:** the parts lift top-first (`stagger from: "end"`, y 0 → −24, `E.in`) while the object's wrapper group fades as one, so it never goes see-through.
@@ -222,7 +223,7 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
 - URL plate centred below it (top ≈ 910): `github.com/<owner>/<repo>`, sentence case.
 - "Follow for more **useful tools**" (top ≈ 1012), with a lime underline bar (dark edge) wiping in under "useful tools".
 - Follow button (420 × 92, top ≈ 1124, centred): state A has an ink fill, dark "FOLLOW" text and a lime plus tag. A cursor glides in from the bottom right and clicks (button scales to 0.95 and back). State B has a dark fill, ink "FOLLOWING" text and a lime check tag. The cursor rests on the button's bottom-right corner, never over the text.
-- **v4 CTA motion** (`kit/examples/v4/08-cta.cjs`, same layout as `L.ctaScene` with `device: false`): the previous scene's window lands as the first trust plate (it rises its name in). Each later plate wipes in on its word, and the Terminal wipes in only on "Docker", with its command typing out under it. Nothing appears before its word. On "Follow" the plates and the code wipe out, and the Terminal's outline grows into the repo window (an in-scene morph). Then the URL wipes in, the follow line rises word by word, the underline wipes, and the cursor arrives on an arc (x `E.out`, y `E.outQ`) and clicks.
+- **v4 CTA motion** (`L.ctaCut`, the same layout and config as `L.ctaScene`, with or without a device; `kit/examples/v4/08-cta.cjs` is the hand-written original): the previous scene's window lands as the first trust plate (it rises its name in). With a device, it slides in after the top plates and its glyph draws; the last plate sits under it. Each later plate wipes in on its word, and the Terminal wipes in only on "Docker", with its command typing out under it. Nothing appears before its word. On "Follow" the plates and the code wipe out, and the Terminal's outline (with no Terminal, the first plate's) grows into the repo window (an in-scene morph). Then the URL wipes in, the follow line rises word by word, the underline wipes, and the cursor arrives on an arc (x `E.out`, y `E.outQ`) and clicks.
 
 ---
 
@@ -300,7 +301,7 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
 - **Plate:** Inter 600 54px, ink text, on an `hi` plate with a 3px ink outline, radius 3px, padding 12/20/14px. No shadow.
 - **Active word:** a lime block behind the word, with the word switching to `on` (dark) while it's spoken.
 - **Position:** centred in y 1420–1540.
-- **Grouping:** at most 4 words and 24 characters per group. Break at `, . ? !` or at a pause longer than 0.35s. A group stays up until the next group starts, or 0.6s after its last word.
+- **Grouping:** at most 4 words and 24 characters per group. Break at `, . ? !` or at a pause longer than 0.35s, then split each phrase into the fewest groups that fit, balanced by width. A group stays up until the next group starts, or 0.6s after its last word.
 - **Entrance:** rise 10px over 0.14s with a bottom-up clip wipe (v3 used an opacity fade; the wipe looks the same and never fails contrast mid-fade). The exit is instant, so the next group replaces it.
 
 ---

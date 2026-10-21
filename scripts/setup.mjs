@@ -83,6 +83,11 @@ fs.mkdirSync(CFG.videosDir, { recursive: true });
 pass(`reels go to ${CFG.videosDir}`);
 console.log("  · screenshots need the Chrome DevTools MCP server in your agent (checked by the agent, not here)");
 
+console.log("\nKit");
+const api = run("node", [path.join(HERE, "api.mjs"), "--check"], { capture: true, allowFail: true });
+api.status === 0 ? pass("kit/API.md matches the kit lib")
+  : bad("kit/API.md is out of date with kit/scripts/lib/reel-lib.cjs", `run: node ${path.join(HERE, "api.mjs")}`);
+
 if (todo.length) {
   console.log(`\n${todo.length} thing(s) to fix:\n`);
   todo.forEach((t, i) => console.log(`${i + 1}. ${t}\n`));
