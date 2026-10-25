@@ -497,6 +497,60 @@ function board(id, ox, oy, mark = "HR", u = 1) {
   const svg = `<g id="${id}">` + [part0, part1, part2].map((g, i) => `<g id="${id}-hp${i}">${g}</g>`).join("") + `</g>`;
   return { svg, parts: [0, 1, 2].map((i) => `#${id}-hp${i}`), sock: A.at([sock[0], sock[1], H + 9]), ports: [A.at([70, 177, 14]), A.at([216, 177, 14]), A.at([257, 70, 14])] };
 }
+// storage cabinet (server rack; OpenAI Habitat reel): a plinth on four levelling feet, a bevelled body with a side
+// seam, a vent grille, a lower side panel and four screws on its +x side; on its front (+y) a door frame holding a
+// status panel (lime bar + lamp) and two columns of six drive sleds, each with a recess, a handle and an LED (one lit);
+// a separate top cover with a cable-entry gland (lanes enter here) and four screws. (ox, oy) = the back corner on the
+// ground; u = size (240 x 170 x 340 at u = 1; the plinth adds 6 round and 22 below). Place it with rackAt.
+// ids: #id (g), parts #id-p0 (feet, plinth, body, side) #id-p1 (front: frame, panel, sleds) #id-p2 (top cover), lamp #id-lmp · starts: visible; assemble(q(parts), at), or move #id-p1 out along +y / #id-p2 up for an exploded view
+function rack(id, ox, oy, u = 1) {
+  const A = anat(ox, oy, u), W = 240, D = 170, H = 340, CAP = 10;
+  const P = (x, y, z) => A.at([x, y, z]), pt = (q) => q.map(r1).join(" ");
+  const poly = (pts, fill, sw = 1.5, stroke = T.ink) =>
+    `<path d="M${pts.map((q) => pt(P(...q))).join(" L")} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+  const fy = (x0, x1, z0, z1) => [[x0, D, z0], [x1, D, z0], [x1, D, z1], [x0, D, z1]];      // a rect on the front
+  const fx = (y0, y1, z0, z1) => [[W, y0, z0], [W, y1, z0], [W, y1, z1], [W, y0, z1]];      // a rect on the +x side
+  const line = (a, b, sw = 1.5, c = T.ink) => `<path d="M${pt(P(...a))} L${pt(P(...b))}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`;
+  // p0: feet, plinth, body, the +x side's seam, grille, screws and lower panel
+  let p0 = [[16, 16], [W - 16, 16], [16, D - 16], [W - 16, D - 16]]
+    .map(([x, y]) => A.cyl(x, y, 9, -22, 8, { lit: T.g500, dark: T.g700, top: T.g300, sw: 1.5 })).join("");
+  p0 += A.slab({ x: -6, y: -6, w: W + 12, d: D + 12, r: 6 }, -14, 14, { lit: T.g500, dark: T.g700, top: T.g300, bevel: 2 });
+  p0 += A.slab({ x: 0, y: 0, w: W, d: D, r: 3 }, 0, H - CAP, { bevel: 3 });
+  p0 += line([W, 0, 150], [W, D, 150], 1.25);
+  p0 += poly(fx(22, D - 22, 190, 300), T.g700, 1.5);
+  p0 += Array.from({ length: 9 }, (_, i) => line([W, 34 + i * 12.8, 202], [W, 34 + i * 12.8, 288], 2)).join("");
+  p0 += [[14, 14], [D - 14, 14], [14, 136], [D - 14, 136]].map(([y, z]) => `<path d="${A.circ([W, y, z], 4.5, "x")}" fill="${T.g300}" stroke="${T.ink}" stroke-width="1.25"/>`).join("");
+  p0 += poly(fx(30, D - 30, 40, 120), T.g500, 1.25);
+  // p1: the front: door frame, status panel, two columns of six drive sleds
+  let p1 = poly(fy(10, W - 10, 10, H - CAP - 8), "none", 1.5);
+  p1 += poly(fy(24, W - 24, 274, 312), T.g900, 1.5) + poly(fy(34, 104, 288, 298), T.lime, 1.25, T.on);
+  p1 += `<path id="${id}-lmp" d="${A.circ([W - 42, D, 293], 6, "y")}" fill="${T.lime}" stroke="${T.on}" stroke-width="1.5"/>`;
+  for (let j = 0; j < 6; j++) for (let i = 0; i < 2; i++) {
+    const x0 = 24 + i * 100, x1 = x0 + 92, z0 = 24 + j * 41, z1 = z0 + 34, zm = (z0 + z1) / 2, lit = i === 0 && j === 4;
+    p1 += poly(fy(x0, x1, z0, z1), T.g700, 1.5) + poly(fy(x0 + 4, x1 - 4, z0 + 4, z1 - 4), T.g300, 1.25) +
+      line([x0 + 12, D, zm], [x0 + 52, D, zm], 2.5, T.g100) + line([x0 + 12, D, zm], [x0 + 52, D, zm], 1, T.ink) +
+      `<path d="${A.circ([x1 - 14, D, zm], 4, "y")}" fill="${lit ? T.lime : T.g900}" stroke="${lit ? T.on : T.ink}" stroke-width="1.25"/>`;
+  }
+  // p2: the top cover with its cable-entry gland and screws
+  let p2 = A.slab({ x: 2, y: 2, w: W - 4, d: D - 4, r: 3 }, H - CAP, CAP, { bevel: 2 });
+  p2 += A.cyl(W / 2, D / 2, 26, H, 6, { lit: T.g300, dark: T.g500, top: T.g100, sw: 2 }) +
+    `<path d="${A.K.ring(W / 2, D / 2, 14, H + 6, A.PR, 32)}" fill="${T.g900}" stroke="${T.ink}" stroke-width="1.5"/>`;
+  p2 += [[16, 16], [W - 16, 16], [16, D - 16], [W - 16, D - 16]].map(([x, y]) => A.screw(x, y, H, 5)).join("");
+  const svg = `<g id="${id}"><g id="${id}-p0">${p0}</g><g id="${id}-p1">${p1}</g><g id="${id}-p2">${p2}</g></g>`;
+  const c = [[-6, -6, -22], [W + 6, -6, -22], [W + 6, D + 6, -22], [-6, D + 6, -22], [0, 0, H + 6], [W, 0, H + 6], [W, D, H + 6], [0, D, H + 6]];
+  return { svg, parts: [`#${id}-p0`, `#${id}-p1`, `#${id}-p2`], hull: hullOf(c.map((q) => P(...q).map(r1))) };
+}
+// a storage cabinet placed by its screen footprint: cx = the screen x of its centre, base = the screen y of its body's
+// front-bottom corner. Returns rack()'s { svg, parts, hull } plus top (the lid centre, where lanes enter), front (the
+// front-bottom corner: an implode seed or silhouette start), box = its [x, y, w, h] for a scene's boxes, ox, oy, W, D, H
+// (px) and m = make(ox, oy) for points on it (m.P(x, y, z) in px).
+// ids: as rack() · starts: visible
+function rackAt(id, cx, base, u = 1) {
+  const W = 240 * u, D = 170 * u, H = 340 * u;
+  const ox = r1(cx - ((W - D) * C) / 2), oy = r1(base - (W + D) / 2);
+  const m = make(ox, oy), r = rack(id, ox, oy, u);
+  return { ...r, top: m.P(W / 2, D / 2, H).map(r1), front: m.P(W, D, 0).map(r1), box: boundsOf(r.hull), ox, oy, W, D, H, m };
+}
 
 // ---------- shell ----------
 const CSS = `
@@ -1259,7 +1313,7 @@ module.exports = {
   mediaCard, layer, slider, sliderAnim, hlBox,
   BZ_SRC, EZ, bz, E, r2, r3, CAM_O, camOf, toScreen, placeAt, lerp, lerpR, handoff, segEase, carry, morphCode,
   SETTLE, MB, mframe, appWinC, trimRect, hlTrim, pulse, klabel, typed, beatGrid,
-  anat, selector, board,
+  anat, selector, board, rack, rackAt,
   CSS, HELPERS, scene, sceneRaw, limeEdges, keyOf, makeCues, ctaScene, ctaRects, ctaCut, todoScene,
   screenWin, fitShot, shotBox, agentWin, rails, dimLine, stretch, lensIn, lensOut, converge, pushScreens, zoomIn,
   flatPath, pathPts, spark, sparkRun, ping, sdraw, seed, implode, seedIn, odo, roll, chrome,
