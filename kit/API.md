@@ -171,7 +171,9 @@ for overlaps and for leaving the grid field; duplicate ids fail the build. DESIG
 - `CSS`
 - `limeEdges(m)`
 - `scene(o)`
-- `sceneRaw({ id, p, dur, lift, svg, html = "", anim, over = "", cam, fade = true })` over: HTML in the stage's screen layer (above the camera; morph frames of cross-cut handoffs live here). cam: { s, x, y, t0, t1 } = one eased camera move to (scale s, offset x/y) over local t0..t1 (default: the v3 push to 1.03, settled within SETTLE). fade: false for scenes that hand off to the next one through a match cut (nothing to clear: the cut is the transition).
+- `STAGE_K` stage scale (Replica reel): every scene's stage (camera + screen layer) is drawn STAGE_K larger about the field centre (540, 805), so the art's .lift field x 58..1022, y 305..1305 fills x 24..1056, y 270..1340 on screen. Every scene shares it, so match cuts still line up; captions and the bg (grid, readout) are not scaled. The frame chrome has no registration marks and the grid is widened to match (DESIGN.md 4). Cameras no longer push in (plan defaults s 1).
+- `fullBleed()` a rect [x, y, w, h] in .lift coords that covers the whole 1080 x 1920 screen (lift 0, camera at rest): full-bleed shots
+- `sceneRaw({ id, p, dur, lift, svg, html = "", anim, over = "", cam, fade = true })` over: HTML in the stage's screen layer (above the camera; morph frames of cross-cut handoffs live here). cam: { s, x, y, t0, t1 } = one eased camera move to (scale s, offset x/y) over local t0..t1 (default: a 6px rise settled within SETTLE; the stage is already drawn STAGE_K larger, so no scale push). fade: false for scenes that hand off to the next one through a match cut (nothing to clear: the cut is the transition).
 
 ## word cues
 
@@ -238,7 +240,54 @@ for overlaps and for leaving the grid field; duplicate ids fail the build. DESIG
 - `hullOf(pts)`
 - `isoHull(...a)`
 - `isoBounds(...a)`
-- `plan(timing, o = {})` cut plan factory: the v4 `_plan.cjs` machinery in one call, so a reel's plan only declares data. timing = script/timing.json. o = { keys: scene keys in order (default: each scene's line id), lift: { key: px } (default 0), camEnd: { key: { s, x, y } } (default { s: 1.03 }; hold-cut sources default { s: 1 }), R: { name: [x, y, w, h] } rects in each scene's .lift that the cuts connect, hands: { h1: [from, to, rectA, rectB, t0, land] } rect = an R name or an array; cut = to's start; land snaps to the nearest music beat (o.snap: false keeps it as given), holds: [[from, to], ...] hold cuts: the same frame on both sides, so from's camera must end at rest and both lifts match } Returns { KEYS, start, dur, beat, lift, camEnd, R, H, scr, hand, cam(key, { t0 }), side(key, rect, side), inbound, outbound, report (one row per hand: out / in side, f, issues, fix), table() (that report as text; build-scenes prints it and warns on every hand whose side or f is out of range, with a t0 / land that fits) }.
+- `plan(timing, o = {})` cut plan factory: the v4 `_plan.cjs` machinery in one call, so a reel's plan only declares data. timing = script/timing.json. o = { keys: scene keys in order (default: each scene's line id), lift: { key: px } (default 0), camEnd: { key: { s, x, y } } (default { s: 1, y: -6 }: no scale push under STAGE_K; hold-cut sources default { s: 1, y: 0 }), R: { name: [x, y, w, h] } rects in each scene's .lift that the cuts connect, hands: { h1: [from, to, rectA, rectB, t0, land] } rect = an R name or an array; cut = to's start; land snaps to the nearest music beat (o.snap: false keeps it as given), holds: [[from, to], ...] hold cuts: the same frame on both sides, so from's camera must end at rest and both lifts match } Returns { KEYS, start, dur, beat, lift, camEnd, R, H, scr, hand, cam(key, { t0 }), side(key, rect, side), inbound, outbound, report (one row per hand: out / in side, f, issues, fix), table() (that report as text; build-scenes prints it and warns on every hand whose side or f is out of range, with a t0 / land that fits) }.
+
+## Drawn app UI (kit/scripts/lib/ui.cjs: `const U = require("../lib/ui.cjs")(L), C = U.C`; DESIGN.md 5.9, kit/InterfaceDesignGuideline.md)
+
+Every drawn app window shows real contents built from these (never placeholder blocks). `C` = the guideline's colour tokens.
+
+- `C` the guideline's colour tokens (void, carbon, obsidian, graphite, smoke, ash, fog, mist, bone, paper, lime, green, coral, teal, iris, lav); text on dark uses paper (headings), mist (body), fog (muted)
+- `rgba(hex, a)` a token as rgba (the guideline's translucent fills, e.g. rgba(255,255,255,0.05))
+- `FEAT` Inter's guideline features (cv01, ss03, zero) as a style string (single quotes: it sits in a style attribute)
+- `MONO` the mono face for code, commands, file names and IDs (the guideline's Berkeley Mono; ui-monospace stands in)
+- `R` radii: cards 12, buttons and inputs 8, badges 6 (pills 9999)
+- `box(id, x, y, w, h, style = "", inner = "")` an absolutely placed div (x, y, w, h in the parent's px)
+- `tx(id, x, y, text, o = {})` one line of UI text; o = { fs (24), fw (400), c (mist), mono, w, align, ls, lh, style }
+- `hair(c = C.graphite)` the guideline's hairline edge as an inset shadow (no layout cost, no outer shadow)
+- `divider(x, y, w, c = C.graphite)` a 1.5px rule
+- `win(id, x, y, w, h, title, inner, o = {})` app window: obsidian card, 12px radius, smoke hairline (inset), the title row (title null = none). o.bare = no fill or edge (a layer over a growing chrome); o.attr, o.style extra. The title row has class "tbar".
+  - ids: #id, #id-c (title row + contents: wipeIn / wipeOut leave the bare card) · starts: visible
+- `card(id, x, y, w, h, inner = "", o = {})` a nested card (darker inset surface)
+- `chrome(id, r)` a growing card drawn as an svg rounded rect (attr tweens interpolate sub-pixel, so it can grow smoothly)
+  - ids: #id (rect) · starts: visible at r
+- `grow(id, A, B, at, dur, ease = "E.inOut")` anim code: a chrome grows from rect A to rect B (pair it with the layer's y and clip-path "inset(... round 12px)")
+- `setChrome(id, r)` anim code: put a chrome at rect r up front
+- `mframeL(id)` the guideline's morph frame for cross-cut handoffs: the lib's five transform-only parts, in obsidian + smoke
+- `input(id, x, y, w, h, inner)` text input / search field: translucent fill, hairline, 8px radius
+- `btn(id, x, y, w, h, text, kind = "ghost", fs = 23)` buttons: "primary" (acid lime, the one action per view), "ghost" (hairline), "white" (pill)
+- `pillW(text, fs = 20, dot = false)` a pill's width for its text (to lay a row of pills out)
+- `pill(id, x, y, text, o = {})` pill: tag chips / sources (o.dot = a colour for a leading dot, o.mono)
+- `badgeW(text, fs = 19, col = false)` a badge's width for its text (col = a colour-coded badge with its dot)
+- `badge(id, x, y, text, kind = "neutral", o = {})` badge: status / category (kind: neutral | green | coral | iris | lav)
+- `status(id, x, y, kind = "done", s = 28)` status icon: done (green, check), fail (coral, x), todo (hollow), run (iris half)
+- `toggle(x, y, on)` a switch (on = iris track, white knob)
+- `kbd(x, y, text)` a keyboard key (mono)
+- `chev(x, y, d, s = 22, c = C.fog)` a chevron or small line icon (d = its path in a 22 box)
+- `claudeMark(id, x, y, s)` the Claude mark in the neutral logo tone (assets/logos/claude-ink.svg as a CSS background; bring the logo in step 4.3)
+- `rrD(x, y, w, h, r)` closed rounded rect, clockwise from the top-left straight
+- `rrHalves(x, y, w, h, r)` the two halves of a rounded rect from the top-edge centre round to the bottom-edge centre (seeded outlines)
+- `trimPath(id, d, c = C.mist, sw = 1.5)` a path that starts hidden and draws on with draw() (pathLength 1)
+- `booking(id, w, top = 0, o = {})` October 2026 starts on a Thursday (Monday-first grid). w = the frame's width; top = y of its first row. extras: "sms" adds the SMS reminders row (the clone's improvement); "orig" / "yours" add the two features the diff compares (yours draws them dashed: missing). Returns { html, parts (ids, top to bottom), rects, h }.
+- `ccWelcome(id, x, y, w)` Claude Code's welcome box (mark, "Welcome to Claude Code!", /help)
+- `ccInput(id, x, y, w, inner)` Claude Code's prompt: "> " and a mono value (pass L.typed(...) to type it in)
+- `ccLine(id, x, y, verb, arg, o = {})` a tool-call log line: a status icon, the verb, its argument (inner html, e.g. typed)
+- `compareFrame(id, x, y, w, h, A, B)` compare slider (a diff view): layers A and B share one card; a divider with a round handle sweeps across it
+  - ids: #id (card), #id-a, #id-b (layers), #id-d (divider + handle, moved with x)
+- `slideCompare(id, w, a, b, at, dur)` anim code: the divider sweeps from fraction a to b of the card's width, layer B revealed right of it
+- `scanLine(id, x, y, w)` scan line: an iris rule that sweeps down a shot (an agent reading it); starts hidden, scan() runs it
+- `scan(id, y0, y1, at, dur)` anim code: the scan line runs y0 -> y1 at an even pace, then hides
+- `wireSvg(id, w, h, frames)` rebuild: rounded iris wireframes over a UI's parts (frames = the parts' rects, e.g. booking().rects); rebuild() runs them
+- `rebuild(wid, parts, n, at, st = 0.1)` anim code: n wireframes draw on, the parts wipe in over them (staggered), the wireframes retract
 
 ## CSS classes (the scene shell's stylesheet, usable in any scene's html)
 

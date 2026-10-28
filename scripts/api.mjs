@@ -1,5 +1,6 @@
-// Writes kit/API.md: a compact reference of every exported helper in kit/scripts/lib/reel-lib.cjs and every timeline
-// helper available inside a scene's anim (HELPERS), built from the comments above each declaration. Read API.md while
+// Writes kit/API.md: a compact reference of every exported helper in kit/scripts/lib/reel-lib.cjs, every timeline
+// helper available inside a scene's anim (HELPERS) and every drawn-app-UI piece in kit/scripts/lib/ui.cjs, built from
+// the comments above each declaration. Read API.md while
 // building scenes instead of the whole lib; open the lib or kit/examples/ only for the one piece you're reusing.
 // Usage: node api.mjs [--check]   (--check exits 1 when API.md is out of date with the lib; setup.mjs runs it)
 // Run it after any change to the kit lib (SKILL.md rule 8).
@@ -69,6 +70,28 @@ for (const line of src) {
   if (m && /^\./.test(m[1]) && m[2]) css.push({ sel: m[1], doc: m[2] });   // undocumented rules are shell internals
 }
 
+// the drawn-app-UI module (kit/scripts/lib/ui.cjs, DESIGN.md 5.9): its pieces are declared two spaces in, inside
+// module.exports = (L) => { ... return { ... } }, each with a comment above
+const UI = path.join(SKILL, "kit/scripts/lib/ui.cjs");
+const uiItems = [];
+if (fs.existsSync(UI)) {
+  const u = fs.readFileSync(UI, "utf8").replace(/\r\n/g, "\n").split("\n");
+  const ret = u.join("\n").match(/\n  return \{([^}]*)\};/);
+  const names = new Set(ret ? ret[1].split(/[\s,]+/).filter(Boolean) : []);
+  const above = (i) => { const o = []; for (let k = i - 1; k >= 0 && /^  \/\//.test(u[k]) && !/^  \/\/ -{3,}/.test(u[k]); k--) o.unshift(u[k].slice(4).trim()); return o; };
+  const done = new Set();
+  u.forEach((line, i) => {
+    const m = line.match(/^  (?:const (\w+) = (?:\(([^)]*)\)|(\w+)) =>|function (\w+)\(([^)]*)\))/) || line.match(/^  const (\w+) = /);
+    if (!m) return;
+    const name = m[1] || m[4], params = m[2] != null ? m[2] : m[3] != null ? m[3] : m[5] != null ? m[5] : null;
+    if (!names.has(name) || done.has(name)) return;
+    done.add(name);
+    const o = above(i), meta = o.filter((l) => /^(ids|starts):/.test(l)), doc = o.filter((l) => !/^(ids|starts):/.test(l));
+    uiItems.push({ name, params, doc: doc.join(" ").replace(/\s+/g, " "), meta: meta.join(" ").replace(/\s+/g, " ") });
+  });
+  for (const n of names) if (!done.has(n)) uiItems.push({ name: n, params: null, doc: "", meta: "" });
+}
+
 const fmt = (it) => `- \`${it.name}${it.params != null ? `(${it.params.replace(/\s+/g, " ")})` : ""}\`${it.doc ? ` ${it.doc}` : ""}` +
   (it.meta ? `\n  - ${it.meta}` : "");
 const missing = [...exported].filter((n) => !seen.has(n) && !ISO.has(n)).sort();
@@ -85,6 +108,9 @@ const md = [
   ...helpers.map(fmt),
   "",
   ...sections.filter((s) => s.items.length).flatMap((s) => [`## ${s.title}`, "", ...s.items.map(fmt), ""]),
+  ...(uiItems.length ? ["## Drawn app UI (kit/scripts/lib/ui.cjs: `const U = require(\"../lib/ui.cjs\")(L), C = U.C`; DESIGN.md 5.9, kit/InterfaceDesignGuideline.md)", "",
+    "Every drawn app window shows real contents built from these (never placeholder blocks). `C` = the guideline's colour tokens.", "",
+    ...uiItems.map(fmt), ""] : []),
   "## CSS classes (the scene shell's stylesheet, usable in any scene's html)",
   "",
   ...css.map((c) => `- \`${c.sel}\`${c.doc ? ` ${c.doc}` : ""}`),
@@ -104,5 +130,5 @@ if (process.argv.includes("--check")) {
   ok("kit/API.md matches the kit lib");
 } else {
   fs.writeFileSync(OUT, md);
-  ok(`kit/API.md: ${helpers.length} timeline helpers, ${seen.size} lib exports (${md.split("\n").length} lines)`);
+  ok(`kit/API.md: ${helpers.length} timeline helpers, ${seen.size} lib exports, ${uiItems.length} ui pieces (${md.split("\n").length} lines)`);
 }

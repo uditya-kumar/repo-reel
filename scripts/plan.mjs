@@ -29,7 +29,7 @@ const P = L.plan(timing, {
   lift: { ${keys.map((k) => `${k}: 0`).join(", ")} },
   // where each scene's camera ends up (it eases there from its landing within L.SETTLE and holds); hold-cut sources end at { s: 1 }
   camEnd: {
-${keys.map((k) => `    ${pad(k)} { s: 1.03, x: 0, y: -8 },`).join("\n")}
+${keys.map((k) => `    ${pad(k)} { s: 1, x: 0, y: -6 },`).join("\n")}
   },
   // rects [x, y, w, h] in each scene's .lift that the cuts connect, e.g. hookWin: [300, 420, 540, 280]
   R: {},

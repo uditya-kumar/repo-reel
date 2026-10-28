@@ -6,7 +6,7 @@ It has two parts:
 - **Open: motion and layout.** The scene patterns in 6 and the motion primitives in 7 are proven examples, not a closed list. Each reel should design the scenes its content needs, as long as every frame stays inside the locked identity.
 Visual references: `references/style-reference-dark.png` (target look) and `references/golden/` (v3 frames, the quality bar).
 
-**Contents:** 1 Style · 2 Palette · 3 Type · 4 Frame anatomy (frame chrome) · 5 Building blocks (5.1 Projection, 5.2 Line, 5.3 Fills, 5.4 Objects, 5.5 Tags, 5.6 Plate, 5.7 Screenshots, 5.8 Crafted objects) · 6 Scene patterns (6.1 CTA) · 7 Motion (eases, primitives, v4 motion layer, v5 implode cut, bans) · 8 Captions · 9 Checklist
+**Contents:** 1 Style · 2 Palette · 3 Type · 4 Frame anatomy (frame chrome, stage scale) · 5 Building blocks (5.1 Projection, 5.2 Line, 5.3 Fills, 5.4 Objects, 5.5 Tags, 5.6 Plate, 5.7 Screenshots, 5.8 Crafted objects, 5.9 Drawn app UI) · 6 Scene patterns (6.1 CTA) · 7 Motion (eases, primitives, v4 motion layer, v5 implode cut, bans) · 8 Captions · 9 Checklist
 
 ---
 
@@ -16,7 +16,8 @@ This is a calm, technical, editorial product illustration on a near-black page.
 Dark-grey **isometric objects** are drawn with **thin, even, off-white outlines** and flat fills. They sit on a faint **column grid**.
 A single **acid-lime accent** marks the meaningful parts: data flow, check tags, progress and the active caption word. Everything else stays neutral.
 Text uses **Inter**, laid out like a printed spec sheet: small all-caps callout labels with leader lines. There is **no header block and no hero word** (no title, kicker, subtitle or big per-frame heading). The illustration carries each frame, and the captions carry the words.
-There are no gradients, drop shadows, glows, rounded "app UI" chrome or hand-drawn wobble. It should feel like a diagram from a well-designed hardware manual.
+There are no gradients, drop shadows, glows, rounded "app UI" chrome or hand-drawn wobble in the reel's own frame. It should feel like a diagram from a well-designed hardware manual.
+The one exception is a **drawn app interface** (a Claude Code session, the app a tool builds, a dashboard): it is drawn as the real product UI with real contents, in the interface guideline `kit/InterfaceDesignGuideline.md` (section 5.9), never as grey placeholder blocks.
 
 **Keywords:** isometric, line art, technical manual, editorial, quiet, precise, monochrome plus one accent.
 
@@ -69,6 +70,7 @@ Rules:
 | Captions | 54px | 600 | Sentence case, `-0.01em` | Section 8. |
 
 Text is always ink, on the page or on a dark plate. Labels never sit on top of objects.
+Inside a drawn app interface (5.9) the type follows `kit/InterfaceDesignGuideline.md` instead: Inter 400/510/590 with `cv01`/`ss03`/`zero`, white headings, grey body text, and a mono face for code, commands, file names and IDs. The table above covers everything outside those windows.
 
 ---
 
@@ -77,18 +79,20 @@ Text is always ink, on the page or on a dark plate. Labels never sit on top of o
 | Zone | Position | Contents |
 |---|---|---|
 | Top safe area | y 0 → 305 | Empty page. The Instagram UI sits here. |
-| **Grid field** | x 58 → 1022, y 305 → 1305 | All illustration, labels and screenshots. |
+| **Grid field** | x 58 → 1022, y 305 → 1305 in `.lift` coords (x 24 → 1056, y 270 → 1340 on screen, under the stage scale) | All illustration, labels and screenshots. |
 | Chrome band | y 1320 → 1360 | The figure readout and scene bars (frame chrome, below). Nothing else. |
+| (full bleed) | x 0 → 1080, y 0 → 1920 | Only a full-bleed screenshot scene (6, "full-bleed README scroll"), placed with `L.fullBleed()`. |
 | Caption band | y 1420 → 1540 | The caption plate, centred. |
 | Bottom safe area | y 1540 → 1920 | Empty. The Instagram UI sits here. |
 
-- **Grid:** 11 vertical rules at x = 58 + 96.4·i (i = 0…10) from y 305 to 1305, plus a horizontal rule at y 800, all `grid` 1.5px. A bottom hairline at y 1305 in `rule`. The grid is a persistent background composition: it never moves, fades or changes between scenes.
+- **Stage scale (Replica reel):** every scene's stage (camera and screen layer) is drawn `L.STAGE_K` = 1.07 larger about the field centre (540, 805), so the art fills x 24 → 1056 on screen and reads bigger on a phone. Scenes are still laid out in the `.lift` field coordinates above (58 → 1022, 305 → 1305), and `build-scenes` still checks boxes there. Every scene shares the scale, so match cuts line up. Because the stage is already larger, cameras no longer push in: the default camera is a 6px rise (`camEnd { s: 1, y: -6 }`), and a full-width window must never get a camera scale above 1 (it would leave the frame).
+- **Grid:** 11 vertical rules at x = 24 + 103.2·i (i = 0…10) from y 270 to 1310, plus a horizontal rule at y 800, all `grid` 1.5px, with no bottom hairline (so no frame closes round the art). The grid is a persistent background composition: it never moves, fades or changes between scenes.
 - **Frame chrome (v5, UncensoredAi):** the margins of a technical manual's page, drawn in the same bg composition as the grid (`L.chrome`, written by `build-scenes.cjs`). It is part of every reel:
-  - **Registration marks:** four 22px L-shaped corner marks, 12px outside the grid field's corners, `dark` 2px.
-  - **Figure readout:** `FIG. 03 / 12` at x 58 in the chrome band, Inter 500 24px, ink, `0.12em`, tabular figures. The scene number is an odometer (`odo`/`roll`): at every cut its digits roll forward (0.5s `E.inOut`) instead of swapping.
-  - **Scene bars:** one 26 × 5 bar per scene (6px gaps), right-aligned to x 1022 in the chrome band, `rule` track; each fills ink (scaleX, 0.4s `E.out`) as its scene starts.
+  - **No registration marks** since the stage scale (the user found the corner marks boxed the art in).
+  - **Figure readout:** `FIG. 03 / 12` at x 24 in the chrome band, Inter 500 24px, ink, `0.12em`, tabular figures. The scene number is an odometer (`odo`/`roll`): at every cut its digits roll forward (0.5s `E.inOut`) instead of swapping.
+  - **Scene bars:** one 26 × 5 bar per scene (6px gaps), right-aligned to x 1056 in the chrome band, `rule` track; each fills ink (scaleX, 0.4s `E.out`) as its scene starts.
   - No lime, no other text, and it moves only on a cut.
-- **Margins:** 58px left and right. Nothing goes past x 58 or x 1022.
+- **Margins:** 58px left and right in `.lift` coords (24px on screen). Nothing goes past x 58 or x 1022 in `.lift`, except a full-bleed shot.
 - **Centring:** each scene's art is vertically centred in the field (art spans about y 400 → 1200). A scene is drawn at natural coordinates and shifted with a per-scene **lift** (the `.lift` wrapper's `top`, e.g. -140px), never by moving every object.
 - **Lots of empty page:** about 40–45% of the field stays empty. Don't fill gaps with decoration.
 - **One vertical story per frame:** objects zig-zag down the page (top → middle → bottom left/right), joined by tubes or arrows, so the eye reads top to bottom like a flowchart.
@@ -121,7 +125,7 @@ Top = `g100` (or `hi` for small parts), left = `g300`, right = `g500`. Recesses 
 - **Hardware:** router (box, two antennae, three LEDs with one lime), phone (slab, dark screen with "5G" and signal bars), laptop (open lid, key grid, dark screen with a lime glyph), adapter or chip board (slab, port row, traces, "MP"-style chip), Ethernet box (two ports, lime LED), workspace (closed container, lid seam, folder mark, lime LED), stopwatch (flat dial, lime pie sweep).
 - **Data:** packet cube (lime, 22px, or 18px when there are many lanes), cable tube (double line: ink outline, `paper` core, w 10, or 8 when there are many lanes), lime flow tube (same, with a lime core and dark edge), gauge (10 cells, lime = available), progress bar (`hi` track, lime fill wiping left to right).
 - **Arrows:** chunky lime block arrow for the main "this becomes that" step; `dark` block arrow for a neutral flow.
-- **Drawn app window:** flat rectangle with a 46px title bar, three 12px ring dots and a centred title, holding grey placeholder blocks (`g300`, light ones `g100`). Use it for generic apps ("Browser", "Steam", "Download").
+- **Drawn app window:** a real app interface with real contents, built with `kit/scripts/lib/ui.cjs` in the interface guideline (section 5.9). Grey placeholder blocks (`appWin` + `ph`, `agentWin`'s rows) are retired: the user rejected placeholder UI ("make real app UI"). Keep `appWin`/`appWinC`/`agentWin` only for old examples.
 - **Icon tile:** a 68px flat square (`hi` fill, ink outline) with a simple line icon, used in checklist rows.
 - **Cursor:** a flat arrow pointer in ink with a dark edge.
 - **Media card** (`mediaCard(id, ox, oy, kind)`): a thin iso slab standing on its edge with a dark screen showing the medium: `video` (play mark + lime subtitle bar), `voice` (waveform bars, centre ones lime), `image` (mountains + lime sun). Use it for content types (videos, voiceovers, images) rather than devices.
@@ -163,7 +167,9 @@ A flat bar 68px tall: `hi` fill, 2.5px ink outline, square corners, Inter 600 30
 - **Title bars:**
   - **Allowed:** the app's own title bar when it is part of the captured image (the screenshot includes the real window chrome).
   - **Not allowed:** any title bar drawn by the reel above or around a screenshot: the drawn window bar (46px bar, ring dots, a title such as "Paseo"), a thin-line bar, a strip of dots or fake traffic lights, a fake URL bar. A screenshot always sits in the bare outline (`screenWin` when screens push or zoom inside it, `shotBox` or `ph` for a still); its own UI is the frame.
-  - The drawn window bar (`appWin`, `appWinC`, `agentWin`) is only for drawn windows with placeholder contents (a generic "Claude Code" or "Codex" app), never for a real screenshot.
+  - The drawn window title row (5.9 `win`, or the old `appWin`/`appWinC`/`agentWin`) is only for drawn app interfaces, never for a real screenshot.
+- **GitHub social card as the hook (Replica reel):** `https://opengraph.githubassets.com/1/<owner>/<repo>` is GitHub's own 1200 × 600 card for the repo (name, description, contributors, issues, stars, forks, owner avatar). For a "This GitHub repo…" hook, show it at full field width with the repo name blurred so the name is the mystery the reel answers (WORKFLOW 4.1). Check it is the card for *this* repo: a card from a sibling repo looks identical but carries the wrong description and numbers (in the Replica reel the user's file was youtube-agent-skill's card). No trim box over it (the user removed one).
+- **Full-bleed README (Replica reel):** a 9:16 capture of the README, 1080 × 3400 (WORKFLOW 4.1), may fill the whole screen edge to edge in its own scene, without an outline, and scroll slowly (7 "slow scroll"). The captions sit over it.
 - Pages are captured light or dark as they appear; never recolour a screenshot.
 - Size them to read on a phone: at least 420px wide for an app panel and the full field width (964px) for a web page.
 
@@ -185,6 +191,15 @@ For the one object a beat is *about* (the product's engine, the thing that route
 - **Never take from Anatomy:** its halo or blur, its CSS classes, its mono font, its cards and labels, `lathe.mjs` (not shipped). The identity stays ours.
 
 ---
+
+### 5.9 Drawn app UI (Replica reel; `kit/scripts/lib/ui.cjs`, `kit/InterfaceDesignGuideline.md`)
+Every app window the reel draws (Claude Code, the app a tool builds or clones, a dashboard, a test runner, a landing page) is the **real interface with real contents** taken from the README: real commands, real file names, real numbers, a real calendar, real buttons. Never grey placeholder bars or empty boxes. The style is the user's interface guideline `kit/InterfaceDesignGuideline.md` (a Linear-style system), applied to app interfaces only; the reel's own frame (grid, captions, plates, kinetic labels, tubes, screenshots, CTA) keeps the identity above.
+- **Surfaces:** windows are obsidian `#161718` cards with a 12px radius and a 1.5px `smoke` hairline (inset shadow, no outer shadow), a 48px title row (three dots, centred grey title); nested cards are carbon with a graphite hairline. Radii: cards 12, buttons and inputs 8, badges 6, pills 9999.
+- **Type:** the guideline's web sizes × 1.5 (body 21–24px, labels 19–20, headings 30–36, readouts 56–64), Inter 400/510/590 with `cv01`/`ss03`/`zero` (in a style attribute use single quotes: `'cv01' on`; double quotes end the attribute and silently drop every style after them), white headings, mist body, fog muted text (never `ash` for text: it fails contrast). Code, commands, file names, schema fields and IDs in the mono face. Spaces inside typed text need `white-space: pre`.
+- **Colour:** acid lime `#e4f222` only for the one primary action per view (Confirm, Get started) and active indicators (the tab underline, a selected row's bar); status as the guideline's badges and icons (green done/passed/connected, coral fail/urgent/out of scope, iris and lavender tags and selections). The reel's lime stays on its own elements (tags, tubes, captions).
+- **Pieces** (API.md "Drawn app UI"): `win`, `card`, `input`, `btn`, `pill`, `badge`, `status`, `toggle`, `kbd`, `chev`, `ccWelcome`/`ccInput`/`ccLine` (Claude Code), `booking` (a booking app with real states, an example of building a product's UI), `compareFrame`, `scanLine`, `wireSvg`, `chrome` + `grow`, `mframeL`.
+- **Motion:** a window's frame can grow open (`chrome` + `grow`: an svg rounded rect whose attributes tween, under a bare `win` layer whose `clip-path: inset(... round 12px)` and `y` follow it); never tween `top`/`height`/`left`/`width` (the check fails them as non-transform motion). Cross-cut handoffs between drawn windows use `mframeL` (the lib's morph frame in obsidian + smoke). A UI can **rebuild** part by part (`wireSvg` + `rebuild`: each part's rounded iris wireframe trims on, then its contents wipe in), and panes push inside one window under a tab strip whose lime underline slides on each word.
+- Worked example: `kit/examples/replica/` (the Replica reel: Claude Code with the eleven commands, a booking app and its clone, recon.md, a tabbed build window, a test runner and compare slider, a review analyser, a landing page).
 
 ## 6. Scene patterns (examples, not a mapping)
 
@@ -215,6 +230,13 @@ These are proven patterns from v3. A beat may use one, combine two, or use a new
 | **detail lens** (Paseo) | check their progress | A trim box draws on a small region of a screenshot (a phone's Working list), then its outline lifts out as a morph frame and opens into a magnified inset beside it (`lensIn`), with a kinetic label. It closes back (`lensOut`) before the next beat. |
 | **stretch tether** (Paseo) | manage them from your phone, even when you're away | Desktop window above, phone below, tied by a live lime tube with pulses. On "away" the phone slides off to the side while the tube re-routes with it, still pulsing (`stretch`), and a dimension line measures the gap with a label (AWAY FROM YOUR DESK). |
 | **implode to a seed** (UncensoredAi) | "But here's the catch" | A turn in the argument. The whole frame shrinks into one lime point at the cut and leaves it there as a seed. The next scene opens on that seed: it pings, and sparks draw the scene's first object out of it (two halves of a silhouette, up both sides), which then assembles inside the outline. Worked example: `kit/examples/uncensored/` (08 → 09). |
+| **repo card hook** (Replica) | "This GitHub repo…" | GitHub's social card for the repo fills the field width with the repo name blurred (the mystery); on the next clause its frame morphs into the first app window (5.7). |
+| **full-bleed README scroll** (Replica) | "Meet Replica Skill…" | The previous window's frame grows to the whole screen and lands as a 9:16 README capture, edge to edge; it scrolls slowly down the page through the line and settles on a section (the commands table), then empties to its frame, which shrinks into the next window. |
+| **rebuild beside the original** (Replica) | recreate almost any app, and even improve it | The original app's real UI on the left; your version on the right rebuilds part by part (wireframe, then contents); on "improve" it gains a row the original lacks. |
+| **sources into one document** (Replica) | studies public pages, screenshots and user flows | An agent session at the top logs each read; three real source windows hang off it by tubes on their words (a scan line reads the screenshot); on "understand" they converge into the output document, whose numbers count up. |
+| **tabbed build window** (Replica) | plans the architecture, recreates the design, builds the frontend, connects the backend | One window with a real tab strip; the lime underline slides to each tab on its word as its pane pushes in (schema, tokens, the rebuilt UI, connected services). |
+| **compare slider** (Replica) | compares your version against the original | Original and yours share one card; a divider with a round handle sweeps across so yours replaces the original strip by strip; parity readouts count up and fail marks land on what is missing. |
+| **complaint → fix rows** (Replica) | discover what people hate… build something better | Ranked complaint rows with coral badges; on the turn each row's text rolls to its fix (`swapName` ids `-a`/`-b`/`-tag`) and a green Fix badge pops. |
 | **tool tour in one window** (Paseo) | editor, terminal, code diffs, pull requests, all in one interface | One wide screen window, a 2×2 plate grid below. Each tool's real screen pushes in on its word (`pushScreens`) and ticks its plate; on the diff and the PR the screen zooms into the named region (the code, the passing checks). On "all in one interface" it eases back out and a trim box draws round each pane of the one app. |
 
 A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s while the grid stays, then the next beat builds. In a match-cut reel the outgoing beat clears with exits instead (`kout`, `wipeOut`, `untrim`, `away`), so the morph frame is the last thing standing.
@@ -252,6 +274,7 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
 - **Packets** travel along sampled tube paths at an even pace (`ease: "none"`, keyframes with `easeEach: "none"`), looping a finite number of times. No infinite repeats.
 - **Camera:** each scene makes one short eased move (default scale 1 → 1.03, origin 50% 45%, `E.cam`) that **settles within `L.SETTLE` (1.1s) and then holds still**. In a match-cut reel it starts when the inbound handoff lands and goes to that scene's `camEnd` (`P.cam(key)`). A scene without an outbound match cut clears with a 0.25s opacity fade at the end. The grid stays fixed underneath.
   - **Never crawl:** a slow push or drift across a whole scene moves every 2.5px outline a fraction of a pixel per frame. The antialiasing shifts frame to frame, so the lines shimmer between ink and grey, and it is worst in Studio's scaled-down player. Measured: a still frame is pixel-identical frame to frame, while a full-scene push varies a border's brightness by about 8%. Parallax `drift()` is capped at `SETTLE` for the same reason.
+  - **Slow scroll (the one exception, Replica reel):** a full-bleed screenshot (the 9:16 README) may scroll the length of its scene: one `y` tween on the image from its landing (+0.25s) to 0.4s before the cut, `E.cam`, about 1,400 shot px over 5s. It is a raster image with no drawn outlines, so it does not shimmer.
 - **More approved primitives** (all calm, eased with the `E` set, seek-safe; use whichever the beat needs):
   - **Typing / terminal reveal:** a line of text appears character by character or line by line (stepped `tl.set` or a clip wipe), with an optional block cursor in ink.
   - **Count-up:** a number in a plate or readout counts to its value (tween a proxy object and write the rounded value in `onUpdate`), ending on the word.
@@ -266,6 +289,11 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
   - **Exploded view:** a stack of layers separates along z (bottom moves down, top moves up, the middle stays, so the stack's centre never moves), 0.7s `power2.inOut`, with leaders riding along with their layers. Open the gap far enough that no layer overlaps another (for a 300 × 200 layer, 266px of z apart).
   - **Drop-on:** a layer or part drops onto a stack from above (y −60 → 0 with opacity, 0.5s `power3.out`), one per spoken change.
   - **Drag:** the cursor appears on a slider knob and drags it; the knob, fill and cursor move together (one `x` tween each, same ease).
+  - **Rebuild (Replica):** a drawn UI comes in part by part: each part's rounded iris wireframe trims on (0.32s, stagger 0.07s), its contents wipe in over it 0.22s later, and the wireframe retracts (`wireSvg` + `rebuild`).
+  - **Grow open (Replica):** a drawn window's card grows from one size to another (or into another window) as an svg rounded rect (`chrome` + `grow`, 0.5s `E.inOut`) while its contents layer slides and unclips with it.
+  - **Compare slider (Replica):** `compareFrame` + `slideCompare`: the divider sweeps across one card (about 1.2s `E.inOut`) and layer B replaces layer A behind it.
+  - **Scan line (Replica):** `scanLine` + `scan`: an iris rule runs down a shot at an even pace (0.8s) and a wireframe lands on each part it passes.
+  - **Tab slide (Replica):** a tab strip's lime underline slides to the tab named on the word (`x` only, 0.45s `E.inOut`) as that tab's pane pushes in.
   New primitives are welcome if they meet the same bar. They join this list by SKILL.md rule 8.
 - **v4 motion layer (HarnessRouter; the scenes are in `kit/examples/v4/`):**
   - **Handoffs (object-based match cuts).** One object travels from screen rect A in scene N to rect B in scene N+1 as **one** eased curve (`E.ramp`) from `t0` to `land`. `L.handoff()` splits that curve at the cut fraction f, so scene N plays `seg(E.ramp, 0, f)` and scene N+1 plays `seg(E.ramp, f, 1)`, and position and speed match across the cut. Snap `land` to a music beat (`L.beatGrid(timing.beats)`, the grid `timing.mjs` writes from the track's `music.bpm`). Put the cut near peak speed (f ≈ 0.35–0.6) and keep each side 0.23–0.5s long.
@@ -316,12 +344,14 @@ A scene can hold two beats (A then B). The outgoing beat fades over 0.25–0.3s 
 - Use leader lines with orthogonal elbows and unboxed caps labels.
 - Leave generous empty space and keep a top-to-bottom flow.
 - Keep all content inside x 58–1022 and y 305–1305, with captions at y 1420–1540 (the frame chrome alone sits in y 1320–1360).
-- Make every object appear on its own word, and hold still between moves (no scene-long camera crawl; the outlines must not shimmer in the Studio player).
+- Make every object appear on its own word, and hold still between moves (no scene-long camera crawl; the outlines must not shimmer in the Studio player; a full-bleed screenshot's slow scroll is the one exception).
+- Draw every app window as the real interface with real contents in `kit/InterfaceDesignGuideline.md` (5.9).
 - Hold new objects, patterns and motion to the same bar: verify.mjs clean (0 errors, 0 warnings) and side by side with `references/golden/` they read as the same reel.
 
 **Don't**
 - Use gradients, shadows, glows, blur as a look (motion blur only on moving parts), 3D renders or photo textures.
-- Use rounded SaaS cards, pills, emoji, stickers or rotated stamps.
+- Use rounded SaaS cards or pills in the reel's own frame (they belong only inside drawn app UI, 5.9), emoji, stickers or rotated stamps.
+- Draw placeholder UI: grey bars or empty boxes standing in for an app's contents.
 - Use a header, hero word, a drawn title bar on a screenshot (any bar, dots or URL strip the reel adds; 5.7), or text on lime.
 - Use more than one accent colour, red/green status, or pure white lines.
 - Overlap objects, crowd a frame or leave objects floating unconnected.

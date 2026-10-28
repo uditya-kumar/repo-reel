@@ -97,9 +97,11 @@ if (errs.length) {
 // bg: the persistent grid (DESIGN.md 4) plus the v5 frame chrome (registration marks, FIG readout, scene segments)
 {
   const D = timing.total, ch = L.chrome(timing.scenes, D);
-  const vx = Array.from({ length: 11 }, (_, i) => (58 + 96.4 * i).toFixed(1));
-  const grid = vx.map((x) => `<line x1="${x}" y1="305" x2="${x}" y2="1305" stroke="${L.T.grid}" stroke-width="1.5" />`).join("") +
-    `<line x1="58" y1="800" x2="1022" y2="800" stroke="${L.T.grid}" stroke-width="1.5" /><line x1="58" y1="1305" x2="1022" y2="1305" stroke="${L.T.rule}" stroke-width="1.5" />`;
+  // the grid spans the scaled stage (L.STAGE_K: x 24..1056, y 270..1310) with no bottom hairline, so no frame closes
+  // round the art (DESIGN.md 4)
+  const vx = Array.from({ length: 11 }, (_, i) => (24 + 103.2 * i).toFixed(1));
+  const grid = vx.map((x) => `<line x1="${x}" y1="270" x2="${x}" y2="1310" stroke="${L.T.grid}" stroke-width="1.5" />`).join("") +
+    `<line x1="24" y1="800" x2="1056" y2="800" stroke="${L.T.grid}" stroke-width="1.5" />`;
   fs.writeFileSync(path.join(ROOT, "compositions/bg.html"), `<template>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
   <style>

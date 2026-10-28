@@ -690,8 +690,15 @@ const LIMES = [T.lime, T.limeL, T.limeR].map((c) => `fill="${c}"`);
 const limeEdges = (m) => m.replace(/<(polygon|rect|circle|path)[^>]*>/g, (el) =>
   LIMES.some((f) => el.includes(f)) ? el.split(`stroke="${T.ink}"`).join(`stroke="${T.on}"`) : el);
 function scene(o) { return limeEdges(sceneRaw(o)); }
+// stage scale (Replica reel): every scene's stage (camera + screen layer) is drawn STAGE_K larger about the field
+// centre (540, 805), so the art's .lift field x 58..1022, y 305..1305 fills x 24..1056, y 270..1340 on screen. Every
+// scene shares it, so match cuts still line up; captions and the bg (grid, readout) are not scaled. The frame chrome has
+// no registration marks and the grid is widened to match (DESIGN.md 4). Cameras no longer push in (plan defaults s 1).
+const STAGE_K = 1.07;
+// a rect [x, y, w, h] in .lift coords that covers the whole 1080 x 1920 screen (lift 0, camera at rest): full-bleed shots
+const fullBleed = () => [540 - 540 / STAGE_K, 805 - 805 / STAGE_K, 1080 / STAGE_K, 1920 / STAGE_K].map(r3);
 // over: HTML in the stage's screen layer (above the camera; morph frames of cross-cut handoffs live here).
-// cam: { s, x, y, t0, t1 } = one eased camera move to (scale s, offset x/y) over local t0..t1 (default: the v3 push to 1.03, settled within SETTLE).
+// cam: { s, x, y, t0, t1 } = one eased camera move to (scale s, offset x/y) over local t0..t1 (default: a 6px rise settled within SETTLE; the stage is already drawn STAGE_K larger, so no scale push).
 // fade: false for scenes that hand off to the next one through a match cut (nothing to clear: the cut is the transition).
 function sceneRaw({ id, p, dur, lift, svg, html = "", anim, over = "", cam, fade = true }) {
   const c = cam ? camOf(cam) : null;
@@ -699,13 +706,13 @@ function sceneRaw({ id, p, dur, lift, svg, html = "", anim, over = "", cam, fade
     ? `      // camera: one slow eased move, settled before the handoff starts
       tl.fromTo("#${p}-cam", { scale: 1, x: 0, y: 0 }, { scale: ${c.s}, x: ${c.x}, y: ${c.y}, duration: ${r3((cam.t1 == null ? dur : cam.t1) - (cam.t0 || 0))}, ease: E.cam }, ${cam.t0 || 0});`
     : `      // short eased push at the start, then still (a push across the whole scene makes thin outlines shimmer)
-      tl.fromTo("#${p}-cam", { scale: 1 }, { scale: 1.03, duration: Math.min(D, ${SETTLE}), ease: E.cam }, 0);`;
+      tl.fromTo("#${p}-cam", { y: 0 }, { y: -6, duration: Math.min(D, ${SETTLE}), ease: E.cam }, 0);`;
   return `<template>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
   <script src="assets/js/motion-blur.js"></script>
   <style>${CSS}  </style>
   <div id="root" data-composition-id="${id}" data-start="0" data-duration="${dur}" data-width="1080" data-height="1920">
-    <div id="${p}-stage" class="clip stage" data-start="0" data-duration="${dur}" data-track-index="1">
+    <div id="${p}-stage" class="clip stage" data-start="0" data-duration="${dur}" data-track-index="1" style="transform:scale(${STAGE_K});transform-origin:540px 805px">
       <div id="${p}-cam" class="cam">
         <div id="${p}-lift" class="lift" style="top:${lift}px">
         <svg id="${p}-art" class="art" viewBox="0 0 1080 1920">${svg}</svg>
@@ -1153,13 +1160,14 @@ const roll = (id, a, b, lh, at, dur = 0.5, first = false) => {
 // like the margins of a technical manual's page. No accent; it never moves except on a cut.
 function chrome(scenes, total) {
   const n = scenes.length, pad = (k) => String(k).padStart(2, "0"), LH = 30, a = 22, o = 12;
-  const marks = [[58 - o, 305 - o, 1, 1], [1022 + o, 305 - o, -1, 1], [1022 + o, 1305 + o, -1, -1], [58 - o, 1305 + o, 1, -1]]
-    .map(([x, y, sx, sy]) => `<path d="M${x} ${y + sy * a} V${y} H${x + sx * a}" fill="none" stroke="${T.dark}" stroke-width="2"/>`).join("");
-  const SW = 26, SG = 6, sx0 = 1022 - (n * SW + (n - 1) * SG);
+  // no registration marks since the stage scale (they boxed the wider art in); the readout and bars sit on x 24..1056
+  const marks = "";
+  void a; void o;
+  const SW = 26, SG = 6, sx0 = 1056 - (n * SW + (n - 1) * SG);
   const segs = scenes.map((_, i) => `<div style="position:absolute;left:${sx0 + i * (SW + SG)}px;top:1342px;width:${SW}px;height:5px;background:${T.rule}">` +
     `<div id="bg-sg${i}" style="position:absolute;inset:0;background:${T.ink};transform-origin:0% 50%;transform:scaleX(0)"></div></div>`).join("");
   const html = `<svg id="bg-marks" viewBox="0 0 1080 1920" style="position:absolute;left:0;top:0;width:1080px;height:1920px">${marks}</svg>` +
-    `<div id="bg-fig" style="position:absolute;left:58px;top:${1344 - LH / 2 - 2}px;height:${LH}px;display:flex;align-items:center;gap:0;font-family:Inter;font-size:24px;font-weight:500;letter-spacing:0.12em;line-height:${LH}px;color:${T.ink};font-variant-numeric:tabular-nums;white-space:pre">` +
+    `<div id="bg-fig" style="position:absolute;left:24px;top:${1344 - LH / 2 - 2}px;height:${LH}px;display:flex;align-items:center;gap:0;font-family:Inter;font-size:24px;font-weight:500;letter-spacing:0.12em;line-height:${LH}px;color:${T.ink};font-variant-numeric:tabular-nums;white-space:pre">` +
     `<span>FIG. </span>${odo("bg-fn", pad(1), LH)}<span> / ${pad(n)}</span></div>` + segs;
   let anim = `
       tl.fromTo("#bg-sg0", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: E.out }, 0.05);`;
@@ -1234,7 +1242,7 @@ const isoBounds = (...a) => boundsOf(isoCorners(...a));
 // cut plan factory: the v4 `_plan.cjs` machinery in one call, so a reel's plan only declares data.
 // timing = script/timing.json. o = {
 //   keys:   scene keys in order (default: each scene's line id),
-//   lift:   { key: px } (default 0),   camEnd: { key: { s, x, y } } (default { s: 1.03 }; hold-cut sources default { s: 1 }),
+//   lift:   { key: px } (default 0),   camEnd: { key: { s, x, y } } (default { s: 1, y: -6 }: no scale push under STAGE_K; hold-cut sources default { s: 1, y: 0 }),
 //   R:      { name: [x, y, w, h] } rects in each scene's .lift that the cuts connect,
 //   hands:  { h1: [from, to, rectA, rectB, t0, land] } rect = an R name or an array; cut = to's start; land snaps to the
 //           nearest music beat (o.snap: false keeps it as given),
@@ -1250,7 +1258,7 @@ function plan(timing, o = {}) {
   const beat = timing.beats ? beatGrid(timing.beats) : (t) => t;
   const holds = o.holds || [], R = o.R || {};
   const lift = Object.fromEntries(KEYS.map((k) => [k, (o.lift || {})[k] || 0]));
-  const camEnd = Object.fromEntries(KEYS.map((k) => [k, { x: 0, y: 0, ...((o.camEnd || {})[k] || { s: holds.some(([f]) => f === k) ? 1 : 1.03 }) }]));
+  const camEnd = Object.fromEntries(KEYS.map((k) => [k, { x: 0, y: 0, ...((o.camEnd || {})[k] || (holds.some(([f]) => f === k) ? { s: 1 } : { s: 1, y: -6 })) }]));
   for (const [f, t] of holds) {
     if (!(f in start) || !(t in start)) throw new Error(`plan: hold cut ${f} -> ${t} names an unknown scene`);
     const c = camEnd[f];
@@ -1317,5 +1325,5 @@ module.exports = {
   CSS, HELPERS, scene, sceneRaw, limeEdges, keyOf, makeCues, ctaScene, ctaRects, ctaCut, todoScene,
   screenWin, fitShot, shotBox, agentWin, rails, dimLine, stretch, lensIn, lensOut, converge, pushScreens, zoomIn,
   flatPath, pathPts, spark, sparkRun, ping, sdraw, seed, implode, seedIn, odo, roll, chrome,
-  kword, hold, wordCount, kspan, swapPlate, regionOf, boundsOf, hullOf, isoHull, isoBounds, plan,
+  STAGE_K, fullBleed, kword, hold, wordCount, kspan, swapPlate, regionOf, boundsOf, hullOf, isoHull, isoBounds, plan,
 };
