@@ -73,10 +73,13 @@ const dist = cost[n * W + m];
 ok(`aligned ${out.length} script words to ${asr.length} ASR words (edit distance ${dist} over ${n} letters)`);
 if (weak.length) console.log(`  weak matches (check by ear): ${weak.map((x) => x.w).join(", ")}`);
 let bad = 0;
+// voice.mjs pass 1 gives every line the whole file on purpose (no stitch points yet): there is nothing to compare
+if (narr.lines.every((l) => l.start === 0 && l.duration === narr.total)) { console.log("  (pass 1: line spans come next, from these words)"); process.exit(0); }
+const tag = narr.source === "user" ? "span" : "tts ";
 narr.lines.forEach((l, li) => {
   const first = out.find((w) => w.li === li), last = [...out].reverse().find((w) => w.li === li);
   const off = first.start - l.start;
   if (Math.abs(off) > 0.4) bad++;
-  console.log(`  ${l.id.padEnd(10)} tts ${l.start.toFixed(2).padStart(6)}  words ${first.start.toFixed(2).padStart(6)}-${last.end.toFixed(2).padStart(6)}${Math.abs(off) > 0.4 ? "  ⚠ off by " + off.toFixed(2) : ""}`);
+  console.log(`  ${l.id.padEnd(10)} ${tag} ${l.start.toFixed(2).padStart(6)}  words ${first.start.toFixed(2).padStart(6)}-${last.end.toFixed(2).padStart(6)}${Math.abs(off) > 0.4 ? "  ⚠ off by " + off.toFixed(2) : ""}`);
 });
 if (dist / n > 0.12 || bad) console.log("⚠ alignment looks loose; listen to narration.wav before going on");

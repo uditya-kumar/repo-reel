@@ -638,8 +638,8 @@ const HELPERS = `
       // typed value: one character every cps seconds; untype removes them last-first
       const type = (s, at, cps = 0.04) => tl.fromTo(q(s + " .kw"), { yPercent: 105 }, { yPercent: 0, duration: 0.16, ease: E.out, stagger: cps }, at);
       const untype = (s, at, cps = 0.03) => tl.fromTo(q(s + " .kw"), { yPercent: 0 }, { yPercent: 105, duration: 0.12, ease: E.in, stagger: { each: cps, from: "end" }, immediateRender: false }, at);
-      // label plate: the frame wipes in, the name rises in its mask
-      const plateIn = (s, at, dur = 0.5) => { wipeIn(s, at, dur); tl.fromTo(s + " .pw", { yPercent: 110 }, { yPercent: 0, duration: dur, ease: E.out }, at + 0.1); };
+      // label plate: the frame wipes in, the name rises in its mask (a swapPlate's second name stays below until swapName)
+      const plateIn = (s, at, dur = 0.5) => { wipeIn(s, at, dur); tl.fromTo(s + " .pw:not([data-swap-b])", { yPercent: 110 }, { yPercent: 0, duration: dur, ease: E.out }, at + 0.1); };
       const away = (s, at, dy = -24, dur = 0.3, st = 0) => tl.fromTo(s, { y: 0, opacity: 1 }, { y: dy, opacity: 0, duration: dur, ease: E.in, stagger: st, immediateRender: false }, at);
       // parallax plane: a group drifts against the camera, a few px, settling with it (never longer than SETTLE)
       const drift = (s, at, dur, dy, dx = 0) => tl.fromTo(s, { x: 0, y: 0 }, { x: dx, y: dy, duration: Math.min(dur, ${SETTLE}), ease: E.cam }, at);
@@ -671,10 +671,12 @@ const HELPERS = `
       // a crafted object's parts, bottom-up (pass its parts list: assemble(q("#a-p0, #a-p1"), at))
       const assemble = (s, at, o = {}) => dropIn(s, at, { stagger: 0.07, ...o });
       // swapPlate()'s roll: the old name rises out of the mask as the new one rises in; the old tag (if any) pops out
+      // and the new value's tag (swapPlate's kindTo, if any) pops in as the roll lands
       const swapName = (id, at, dur = 0.36) => {
         tl.fromTo("#" + id + "-a", { yPercent: 0 }, { yPercent: -110, duration: dur, ease: E.inOut }, at);
         tl.fromTo("#" + id + "-b", { yPercent: 110 }, { yPercent: 0, duration: dur, ease: E.inOut }, at);
         if (document.querySelector("#" + id + "-tag")) unpop("#" + id + "-tag", at);
+        if (document.querySelector("#" + id + "-tag2")) pop("#" + id + "-tag2", at + dur * 0.6);
       };
       // packet cube travels a sampled path, looping with an even pace
       const flow = (s, pts, at, dur, reps) => {
@@ -692,7 +694,7 @@ const limeEdges = (m) => m.replace(/<(polygon|rect|circle|path)[^>]*>/g, (el) =
 function scene(o) { return limeEdges(sceneRaw(o)); }
 // stage scale (Replica reel): every scene's stage (camera + screen layer) is drawn STAGE_K larger about the field
 // centre (540, 805), so the art's .lift field x 58..1022, y 305..1305 fills x 24..1056, y 270..1340 on screen. Every
-// scene shares it, so match cuts still line up; captions and the bg (grid, readout) are not scaled. The frame chrome has
+// scene shares it, so match cuts still line up; captions and the bg (grid, scene bars) are not scaled. The frame chrome has
 // no registration marks and the grid is widened to match (DESIGN.md 4). Cameras no longer push in (plan defaults s 1).
 const STAGE_K = 1.07;
 // a rect [x, y, w, h] in .lift coords that covers the whole 1080 x 1920 screen (lift 0, camera at rest): full-bleed shots
@@ -712,7 +714,7 @@ function sceneRaw({ id, p, dur, lift, svg, html = "", anim, over = "", cam, fade
   <script src="assets/js/motion-blur.js"></script>
   <style>${CSS}  </style>
   <div id="root" data-composition-id="${id}" data-start="0" data-duration="${dur}" data-width="1080" data-height="1920">
-    <div id="${p}-stage" class="clip stage" data-start="0" data-duration="${dur}" data-track-index="1" style="transform:scale(${STAGE_K});transform-origin:540px 805px">
+    <div id="${p}-stage" class="clip stage" data-layout-allow-overflow data-start="0" data-duration="${dur}" data-track-index="1" style="transform:scale(${STAGE_K});transform-origin:540px 805px">
       <div id="${p}-cam" class="cam">
         <div id="${p}-lift" class="lift" style="top:${lift}px">
         <svg id="${p}-art" class="art" viewBox="0 0 1080 1920">${svg}</svg>
@@ -1155,28 +1157,22 @@ const roll = (id, a, b, lh, at, dur = 0.5, first = false) => {
   }).join("");
 };
 
-// frame chrome (bg composition): registration marks just outside the grid field's corners and a figure readout under
-// it ("FIG. 03 / 12", the number rolling at every cut, with one segment per scene that fills as the reel advances),
-// like the margins of a technical manual's page. No accent; it never moves except on a cut.
+// frame chrome (bg composition): one segment per scene at the right of the chrome band that fills as the reel
+// advances, like the margins of a technical manual's page. No accent; it never moves except on a cut.
 function chrome(scenes, total) {
-  const n = scenes.length, pad = (k) => String(k).padStart(2, "0"), LH = 30, a = 22, o = 12;
-  // no registration marks since the stage scale (they boxed the wider art in); the readout and bars sit on x 24..1056
-  const marks = "";
-  void a; void o;
+  const n = scenes.length;
+  // no registration marks since the stage scale (they boxed the wider art in) and no frame number; the bars end at x 1056
   const SW = 26, SG = 6, sx0 = 1056 - (n * SW + (n - 1) * SG);
   const segs = scenes.map((_, i) => `<div style="position:absolute;left:${sx0 + i * (SW + SG)}px;top:1342px;width:${SW}px;height:5px;background:${T.rule}">` +
     `<div id="bg-sg${i}" style="position:absolute;inset:0;background:${T.ink};transform-origin:0% 50%;transform:scaleX(0)"></div></div>`).join("");
-  const html = `<svg id="bg-marks" viewBox="0 0 1080 1920" style="position:absolute;left:0;top:0;width:1080px;height:1920px">${marks}</svg>` +
-    `<div id="bg-fig" style="position:absolute;left:24px;top:${1344 - LH / 2 - 2}px;height:${LH}px;display:flex;align-items:center;gap:0;font-family:Inter;font-size:24px;font-weight:500;letter-spacing:0.12em;line-height:${LH}px;color:${T.ink};font-variant-numeric:tabular-nums;white-space:pre">` +
-    `<span>FIG. </span>${odo("bg-fn", pad(1), LH)}<span> / ${pad(n)}</span></div>` + segs;
+  const html = segs;
   let anim = `
       tl.fromTo("#bg-sg0", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: E.out }, 0.05);`;
   scenes.forEach((sc, i) => {
     if (!i) return;
-    anim += roll("bg-fn", pad(i), pad(i + 1), LH, sc.start, 0.5, i === 1) + `
+    anim += `
       tl.fromTo("#bg-sg${i}", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: E.out }, ${r2(sc.start + 0.05)});`;
   });
-  // the first roll per digit renders its from-state at build; later digits are set to their resting value up front
   return { html, anim, total };
 }
 
@@ -1200,14 +1196,18 @@ const kspan = (sel, n, tin, tout, o = {}) => {
 };
 // plate whose name rolls from one value to another (DESIGN.md 7 "Value or state swap"); swapName(id, at) runs the roll.
 // Both names share one mask and the longer one sets its width, so neither is clipped. kind = the tag shown with the
-// first value ("none" = no tag); it pops out as the name rolls. ids: #id-a (from), #id-b (to), #id-tag.
+// first value ("none" = no tag); it pops out as the name rolls. kindTo (optional) = the tag the new value gets (e.g.
+// "x" -> "check": CLUTTERED X rolls to CLEAN check); swapName pops it in as the roll lands. plateIn() rises only the
+// first name (the second is marked data-swap-b), so the two never show at once. ids: #id-a (from), #id-b (to), #id-tag,
+// #id-tag2 (kindTo).
 // starts: shows `from` (and its tag); swapName(id, at) rolls it
-const swapPlate = (id, x, y, w, from, to, kind) => {
-  const A = `<span id="${id}-a" class="pw">${from}</span>`, B = `<span id="${id}-b" class="pw">${to}</span>`;
+const swapPlate = (id, x, y, w, from, to, kind, kindTo) => {
+  const A = `<span id="${id}-a" class="pw">${from}</span>`, B = `<span id="${id}-b" class="pw" data-swap-b>${to}</span>`;
   const abs = (h) => h.replace(`class="pw"`, `class="pw" style="position:absolute;left:0;top:0;white-space:nowrap"`);
   const inner = from.length >= to.length ? A + abs(B) : B + abs(A);
   return `<div id="${id}" class="plate" style="left:${x}px;top:${y}px;width:${w}px"><span class="pt" style="position:relative">${inner}</span>` +
-    (kind === "none" ? "" : `<svg id="${id}-tag" class="tag" width="58" height="40" viewBox="0 0 58 40">${tagInner(kind)}</svg>`) + `</div>`;
+    (kind === "none" ? "" : `<svg id="${id}-tag" class="tag" width="58" height="40" viewBox="0 0 58 40">${tagInner(kind)}</svg>`) +
+    (kindTo && kindTo !== "none" ? `<svg id="${id}-tag2" class="tag" width="58" height="40" viewBox="0 0 58 40" style="position:absolute;right:12px;top:11.5px;opacity:0">${tagInner(kindTo)}</svg>` : "") + `</div>`;
 };
 // screenshot region: rect [x, y, w, h] in the source image's own pixels (as read off the PNG) -> px in the shot as
 // shown (srcW = the file's width, sw = its shown width from fitShot), and optionally after zoomIn(s, origin) inside its
@@ -1239,6 +1239,24 @@ const isoCorners = (ox, oy, x, y, z, w, d, h) => {
 };
 const isoHull = (...a) => hullOf(isoCorners(...a));
 const isoBounds = (...a) => boundsOf(isoCorners(...a));
+// footprint of a lib object placed at (ox, oy), for a scene's boxes: objBox(kind, ox, oy, s) -> { hull, rect } (hull =
+// its convex outline, rect = [x, y, w, h]). kinds: laptop (base + open lid), router (body + antenna tips), phone, adapter
+// (board + chip), ethBox, workspace, mediaCard. Saves working iso extents out by hand.
+const objBox = (kind, ox, oy, s = 1) => {
+  const c = (x, y, z, w, d, h) => isoCorners(ox, oy, x * s, y * s, z * s, w * s, d * s, h * s);
+  const m = make(ox, oy), P = {
+    laptop: () => [...c(0, 0, 0, 300, 200, 16), ...c(0, 0, 16, 300, 10, 190)],
+    router: () => [...c(0, 0, 0, 170, 100, 44), m.P(22 * s, 14 * s, 154 * s), m.P(148 * s, 14 * s, 154 * s)],
+    phone: () => c(0, 0, 0, 120, 16, 210),
+    adapter: () => [...c(0, 0, 0, 240, 160, 22), ...c(60, 40, 22, 100, 80, 14)],
+    ethBox: () => c(0, 0, 0, 160, 90, 52),
+    workspace: () => c(0, 0, 0, 150, 150, 90),
+    mediaCard: () => c(0, 0, 0, 200, 16, 130),
+  }[kind];
+  if (!P) throw new Error(`objBox: unknown kind "${kind}" (laptop, router, phone, adapter, ethBox, workspace, mediaCard)`);
+  const pts = P();
+  return { hull: hullOf(pts), rect: boundsOf(pts) };
+};
 // cut plan factory: the v4 `_plan.cjs` machinery in one call, so a reel's plan only declares data.
 // timing = script/timing.json. o = {
 //   keys:   scene keys in order (default: each scene's line id),
@@ -1325,5 +1343,5 @@ module.exports = {
   CSS, HELPERS, scene, sceneRaw, limeEdges, keyOf, makeCues, ctaScene, ctaRects, ctaCut, todoScene,
   screenWin, fitShot, shotBox, agentWin, rails, dimLine, stretch, lensIn, lensOut, converge, pushScreens, zoomIn,
   flatPath, pathPts, spark, sparkRun, ping, sdraw, seed, implode, seedIn, odo, roll, chrome,
-  STAGE_K, fullBleed, kword, hold, wordCount, kspan, swapPlate, regionOf, boundsOf, hullOf, isoHull, isoBounds, plan,
+  STAGE_K, fullBleed, kword, hold, wordCount, kspan, swapPlate, regionOf, boundsOf, hullOf, isoHull, isoBounds, objBox, plan,
 };

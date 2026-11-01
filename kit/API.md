@@ -24,7 +24,7 @@ for overlaps and for leaving the grid field; duplicate ids fail the build. DESIG
 - `kout(s, at, st = 0.03, dur = 0.32)`
 - `type(s, at, cps = 0.04)` typed value: one character every cps seconds; untype removes them last-first
 - `untype(s, at, cps = 0.03)`
-- `plateIn(s, at, dur = 0.5)` label plate: the frame wipes in, the name rises in its mask
+- `plateIn(s, at, dur = 0.5)` label plate: the frame wipes in, the name rises in its mask (a swapPlate's second name stays below until swapName)
 - `away(s, at, dy = -24, dur = 0.3, st = 0)`
 - `drift(s, at, dur, dy, dx = 0)` parallax plane: a group drifts against the camera, a few px, settling with it (never longer than SETTLE)
 - `run(s, at, dur = 0.7, reps = 0, gap = 0)` data pulse (pulse() in the lib): the segment runs the tube start -> end at an even pace
@@ -32,7 +32,7 @@ for overlaps and for leaving the grid field; duplicate ids fail the build. DESIG
 - `morph(id, A, B, at, dur, ease)`
 - `dropIn(s, at, o = {})` drop-in (DESIGN.md 5.8 "assemble bottom-up"): an element or a list falls dy px into place with a short fade. The from-state is set once at build and both moves are .to tweens, so the pair never trips gsap_repeated_fromto_without_baseline. o = { dy (-40), dur (0.5), fade (0.1), stagger (0), ease (E.out) }
 - `assemble(s, at, o = {})` a crafted object's parts, bottom-up (pass its parts list: assemble(q("#a-p0, #a-p1"), at))
-- `swapName(id, at, dur = 0.36)` swapPlate()'s roll: the old name rises out of the mask as the new one rises in; the old tag (if any) pops out
+- `swapName(id, at, dur = 0.36)` swapPlate()'s roll: the old name rises out of the mask as the new one rises in; the old tag (if any) pops out and the new value's tag (swapPlate's kindTo, if any) pops in as the roll lands
 - `flow(s, pts, at, dur, reps)` packet cube travels a sampled path, looping with an even pace
 
 ## Basics
@@ -171,7 +171,7 @@ for overlaps and for leaving the grid field; duplicate ids fail the build. DESIG
 - `CSS`
 - `limeEdges(m)`
 - `scene(o)`
-- `STAGE_K` stage scale (Replica reel): every scene's stage (camera + screen layer) is drawn STAGE_K larger about the field centre (540, 805), so the art's .lift field x 58..1022, y 305..1305 fills x 24..1056, y 270..1340 on screen. Every scene shares it, so match cuts still line up; captions and the bg (grid, readout) are not scaled. The frame chrome has no registration marks and the grid is widened to match (DESIGN.md 4). Cameras no longer push in (plan defaults s 1).
+- `STAGE_K` stage scale (Replica reel): every scene's stage (camera + screen layer) is drawn STAGE_K larger about the field centre (540, 805), so the art's .lift field x 58..1022, y 305..1305 fills x 24..1056, y 270..1340 on screen. Every scene shares it, so match cuts still line up; captions and the bg (grid, scene bars) are not scaled. The frame chrome has no registration marks and the grid is widened to match (DESIGN.md 4). Cameras no longer push in (plan defaults s 1).
 - `fullBleed()` a rect [x, y, w, h] in .lift coords that covers the whole 1080 x 1920 screen (lift 0, camera at rest): full-bleed shots
 - `sceneRaw({ id, p, dur, lift, svg, html = "", anim, over = "", cam, fade = true })` over: HTML in the stage's screen layer (above the camera; morph frames of cross-cut handoffs live here). cam: { s, x, y, t0, t1 } = one eased camera move to (scale s, offset x/y) over local t0..t1 (default: a 6px rise settled within SETTLE; the stage is already drawn STAGE_K larger, so no scale push). fade: false for scenes that hand off to the next one through a match cut (nothing to clear: the cut is the transition).
 
@@ -226,20 +226,21 @@ for overlaps and for leaving the grid field; duplicate ids fail the build. DESIG
 - `odo(id, value, lh)` odometer digits: each digit is a masked column 0-9 0-9 that rolls (E.inOut) to its next value, so a number changes by rolling, not by a swap. Tabular figures, any font size; lh = line height in px.
   - ids: #id-d<i>, one column per digit · starts: every column shows 0, not `value`: gsap.set("#id-d<i>", { y: -digit * lh }) first, or roll(..., first = true)
 - `roll(id, a, b, lh, at, dur = 0.5, first = false)` roll digits from value a to b (same length); each digit moves forward (9 -> 0 passes through 10)
-- `chrome(scenes, total)` frame chrome (bg composition): registration marks just outside the grid field's corners and a figure readout under it ("FIG. 03 / 12", the number rolling at every cut, with one segment per scene that fills as the reel advances), like the margins of a technical manual's page. No accent; it never moves except on a cut.
+- `chrome(scenes, total)` frame chrome (bg composition): one segment per scene at the right of the chrome band that fills as the reel advances, like the margins of a technical manual's page. No accent; it never moves except on a cut.
 
 ## build-time guards and planning (Harness2 reel)
 
 - `hold(tin, tout, min = 0.6, what = "element")` Each helper here turns a mistake that used to surface only in a snapshot or a check warning into an error at build time, with the fix in the message. hold check for an in/out pair taken from two words: returns tout, or throws when out comes less than min s after in (a label that flashes, or an exit that cuts off its own entrance)
 - `wordCount(lines)`
 - `kspan(sel, n, tin, tout, o = {})` kinetic label in AND out as one call (anim code): the rise must finish, plus o.hold s (default 0.3), before the exit. n = the label's word count, or its lines (as passed to klabel). o = { st (0.05), dur (0.5), hold (0.3), ost (kout stagger) }
-- `swapPlate(id, x, y, w, from, to, kind)` plate whose name rolls from one value to another (DESIGN.md 7 "Value or state swap"); swapName(id, at) runs the roll. Both names share one mask and the longer one sets its width, so neither is clipped. kind = the tag shown with the first value ("none" = no tag); it pops out as the name rolls. ids: #id-a (from), #id-b (to), #id-tag.
+- `swapPlate(id, x, y, w, from, to, kind, kindTo)` plate whose name rolls from one value to another (DESIGN.md 7 "Value or state swap"); swapName(id, at) runs the roll. Both names share one mask and the longer one sets its width, so neither is clipped. kind = the tag shown with the first value ("none" = no tag); it pops out as the name rolls. kindTo (optional) = the tag the new value gets (e.g. "x" -> "check": CLUTTERED X rolls to CLEAN check); swapName pops it in as the roll lands. plateIn() rises only the first name (the second is marked data-swap-b), so the two never show at once. ids: #id-a (from), #id-b (to), #id-tag, #id-tag2 (kindTo).
   - starts: shows `from` (and its tag); swapName(id, at) rolls it
 - `regionOf(rect, srcW, sw, o = {})` screenshot region: rect [x, y, w, h] in the source image's own pixels (as read off the PNG) -> px in the shot as shown (srcW = the file's width, sw = its shown width from fitShot), and optionally after zoomIn(s, origin) inside its window. Use the result for hlTrim boxes (in the window's fixed over layer when the shot is zoomed).
 - `boundsOf(pts)` shapes for a scene's `boxes` (build-scenes checks them): a rect [x, y, w, h], or a convex outline [[x, y], ...]. boundsOf = the rect round some points; hullOf = their convex outline; isoHull = the silhouette of an iso box make(ox, oy).box(x, y, z, w, d, h), a hexagon: use it for iso objects, whose rects overlap at the corners when the objects themselves don't. isoBounds = that box's rect.
 - `hullOf(pts)`
 - `isoHull(...a)`
 - `isoBounds(...a)`
+- `objBox(kind, ox, oy, s = 1)` footprint of a lib object placed at (ox, oy), for a scene's boxes: objBox(kind, ox, oy, s) -> { hull, rect } (hull = its convex outline, rect = [x, y, w, h]). kinds: laptop (base + open lid), router (body + antenna tips), phone, adapter (board + chip), ethBox, workspace, mediaCard. Saves working iso extents out by hand.
 - `plan(timing, o = {})` cut plan factory: the v4 `_plan.cjs` machinery in one call, so a reel's plan only declares data. timing = script/timing.json. o = { keys: scene keys in order (default: each scene's line id), lift: { key: px } (default 0), camEnd: { key: { s, x, y } } (default { s: 1, y: -6 }: no scale push under STAGE_K; hold-cut sources default { s: 1, y: 0 }), R: { name: [x, y, w, h] } rects in each scene's .lift that the cuts connect, hands: { h1: [from, to, rectA, rectB, t0, land] } rect = an R name or an array; cut = to's start; land snaps to the nearest music beat (o.snap: false keeps it as given), holds: [[from, to], ...] hold cuts: the same frame on both sides, so from's camera must end at rest and both lifts match } Returns { KEYS, start, dur, beat, lift, camEnd, R, H, scr, hand, cam(key, { t0 }), side(key, rect, side), inbound, outbound, report (one row per hand: out / in side, f, issues, fix), table() (that report as text; build-scenes prints it and warns on every hand whose side or f is out of range, with a t0 / land that fits) }.
 
 ## Drawn app UI (kit/scripts/lib/ui.cjs: `const U = require("../lib/ui.cjs")(L), C = U.C`; DESIGN.md 5.9, kit/InterfaceDesignGuideline.md)

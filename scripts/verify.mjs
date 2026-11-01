@@ -1,5 +1,7 @@
 // Step 10. Build scenes, run the strict check, and snapshot scenes for side-by-side review with v3.
-// Usage: node verify.mjs <projectDir> [--no-snap] [--dense] [--cuts] [--scenes 05,11] [--infos]
+// Usage: node verify.mjs <projectDir> [--no-snap] [--dense] [--cuts] [--scenes 05,11] [--small] [--infos]
+// --no-snap: build + check only (no snapshots): the fast loop when a fix only needs the check to pass.
+// --small: smaller contact-sheet tiles (240 x 427 instead of 360 x 640) for re-checks after a fix.
 // Fails on any build check, check error or warning. The check runs as JSON and only its errors and warnings are
 // printed, one line each with its scene (--infos adds the info findings); the full report path is printed too.
 // A cold first load that hits "Navigation timeout" is retried once with a longer timeout.
@@ -73,8 +75,10 @@ ok("check clean");
 
 // ---- snapshots ----
 // tile frames [{ f, t }] into one contact sheet: left to right, top to bottom, `cols` to a row, each at 360 x 640
+// (--small: 240 x 427, under half the pixels to read: enough to check timing and layout after a fix)
+const SMALL = argv.includes("--small");
 function sheet(fr, out, cols) {
-  const W = 360, H = 640, c = Math.min(fr.length, cols), rows = Math.ceil(fr.length / c);
+  const W = SMALL ? 240 : 360, H = SMALL ? 427 : 640, c = Math.min(fr.length, cols), rows = Math.ceil(fr.length / c);
   const fc = fr.map((_, k) => `[${k}:v]scale=${W}:${H}[v${k}]`), rl = [];
   for (let r = 0; r < rows; r++) {
     const ks = fr.map((_, k) => k).slice(r * c, r * c + c), lab = ks.map((k) => `[v${k}]`).join("");

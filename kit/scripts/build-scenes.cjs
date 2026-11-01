@@ -94,7 +94,7 @@ if (errs.length) {
   process.exit(1);
 }
 
-// bg: the persistent grid (DESIGN.md 4) plus the v5 frame chrome (registration marks, FIG readout, scene segments)
+// bg: the persistent grid (DESIGN.md 4) plus the v5 frame chrome (scene segments)
 {
   const D = timing.total, ch = L.chrome(timing.scenes, D);
   // the grid spans the scaled stage (L.STAGE_K: x 24..1056, y 270..1310) with no bottom hairline, so no frame closes

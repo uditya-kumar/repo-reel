@@ -64,7 +64,6 @@ Rules:
 | Label plate ("FREE + OPEN-SOURCE") | 30px | 600 | ALL CAPS, `0.04em` | Inside a plate (section 5.6). |
 | Window title ("Browser") | 26px | 500 | Sentence case | Drawn window title bars only. |
 | Data readout ("9.6 MB/s", "10 Mbps") | 30–56px | 600 | As written, tabular numbers | Inside windows and above bars. |
-| Figure readout ("FIG. 03 / 12") | 24px | 500 | ALL CAPS, `0.12em`, tabular numbers | The frame chrome only (section 4). |
 | CTA line ("Follow for more useful tools") | 56px | 600 | Sentence case, `-0.01em` | The CTA frame only. |
 | URL plate | 34px | 500 | As written, `0.01em` | The CTA frame only. |
 | Captions | 54px | 600 | Sentence case, `-0.01em` | Section 8. |
@@ -80,7 +79,7 @@ Inside a drawn app interface (5.9) the type follows `kit/InterfaceDesignGuidelin
 |---|---|---|
 | Top safe area | y 0 → 305 | Empty page. The Instagram UI sits here. |
 | **Grid field** | x 58 → 1022, y 305 → 1305 in `.lift` coords (x 24 → 1056, y 270 → 1340 on screen, under the stage scale) | All illustration, labels and screenshots. |
-| Chrome band | y 1320 → 1360 | The figure readout and scene bars (frame chrome, below). Nothing else. |
+| Chrome band | y 1320 → 1360 | The scene bars (frame chrome, below). Nothing else. |
 | (full bleed) | x 0 → 1080, y 0 → 1920 | Only a full-bleed screenshot scene (6, "full-bleed README scroll"), placed with `L.fullBleed()`. |
 | Caption band | y 1420 → 1540 | The caption plate, centred. |
 | Bottom safe area | y 1540 → 1920 | Empty. The Instagram UI sits here. |
@@ -89,9 +88,9 @@ Inside a drawn app interface (5.9) the type follows `kit/InterfaceDesignGuidelin
 - **Grid:** 11 vertical rules at x = 24 + 103.2·i (i = 0…10) from y 270 to 1310, plus a horizontal rule at y 800, all `grid` 1.5px, with no bottom hairline (so no frame closes round the art). The grid is a persistent background composition: it never moves, fades or changes between scenes.
 - **Frame chrome (v5, UncensoredAi):** the margins of a technical manual's page, drawn in the same bg composition as the grid (`L.chrome`, written by `build-scenes.cjs`). It is part of every reel:
   - **No registration marks** since the stage scale (the user found the corner marks boxed the art in).
-  - **Figure readout:** `FIG. 03 / 12` at x 24 in the chrome band, Inter 500 24px, ink, `0.12em`, tabular figures. The scene number is an odometer (`odo`/`roll`): at every cut its digits roll forward (0.5s `E.inOut`) instead of swapping.
+  - **No frame number:** the `FIG. 03 / 12` readout was dropped (the user did not want a frame number on the reel).
   - **Scene bars:** one 26 × 5 bar per scene (6px gaps), right-aligned to x 1056 in the chrome band, `rule` track; each fills ink (scaleX, 0.4s `E.out`) as its scene starts.
-  - No lime, no other text, and it moves only on a cut.
+  - No lime, no text, and it moves only on a cut.
 - **Margins:** 58px left and right in `.lift` coords (24px on screen). Nothing goes past x 58 or x 1022 in `.lift`, except a full-bleed shot.
 - **Centring:** each scene's art is vertically centred in the field (art spans about y 400 → 1200). A scene is drawn at natural coordinates and shifted with a per-scene **lift** (the `.lift` wrapper's `top`, e.g. -140px), never by moving every object.
 - **Lots of empty page:** about 40–45% of the field stays empty. Don't fill gaps with decoration.
@@ -141,7 +140,7 @@ Top = `g100` (or `hi` for small parts), left = `g300`, right = `g500`. Recesses 
   - **Kinetic label** (`klabel(id, x, y, lines, {a})`): a callout label (same type as section 3) with each word in a mask, so it can rise in word by word.
   - **Typed value** (`typed(id, text)`): text whose characters rise in one by one inside a mask. Use it for field values and terminal lines. `--` stays one unit.
   - **Label plate mask:** a plate's name sits in `.pt > .pw`, so `plateIn()` can wipe the frame and rise the name. It looks the same at rest.
-  - **Swap plate** (`swapPlate(id, x, y, w, from, to, kind)` + `swapName(id, at)`, Harness2): a plate whose name rolls to a new value inside the same mask (the old name rises out as the new one rises in, and the old tag pops out). The longer name sizes the mask, so neither is clipped. Use it when a carried plate becomes something else on landing, or for a value swap.
+  - **Swap plate** (`swapPlate(id, x, y, w, from, to, kind, kindTo)` + `swapName(id, at)`, Harness2; `kindTo` CleanYourTV): a plate whose name rolls to a new value inside the same mask (the old name rises out as the new one rises in, and the old tag pops out). The longer name sizes the mask, so neither is clipped. `plateIn` rises only the first name. With `kindTo` the new value gets its own tag, popping in as the roll lands (a verdict that flips: CLUTTERED HOME SCREEN ✕ → CLEAN HOME SCREEN ✓). Use it when a carried plate becomes something else on landing, or for a value swap.
 - **Screenshot objects (Paseo, `kit/examples/paseo/`):**
   - **Screen frame** (`screenWin(id, x, y, w, h, screens, {over})`): a bare 2.5px ink outline (no title bar, 5.7) whose inside is a viewport (`#id-v`, (w − 5) × (h − 5), overflow hidden) holding one or more real screens (`{id, src, w, h, x?, y?, inner?, attr?}`) that push, zoom and pan inside the fixed frame. `inner` HTML moves and zooms with its screen; `over` is a fixed layer (`#id-o`) for trim boxes that must not zoom. The viewport sits in `#id-c`, so the bare outline is left for a morph frame. Size screens with `fitShot(ar, vw, vh, "width" | "cover")` and the frame to the screen (h = shot height + 5), so no empty strip shows. A single still shot can also use `shotBox`.
   - **Shot box** (`shotBox(id, x, y, w, h, src, {pad, inner})`): a bare screenshot (a phone screen) or a logo tile in the 2.5px ink outline, contents in `#id-c`, so it can be a morph source or target. `pad` insets a logo and keeps its aspect.
